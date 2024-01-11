@@ -37,13 +37,28 @@ class Countries:
         self.data.insert(2, 'GdpPerCapita', pop)
 
 
+
 class Manufacturers:
     def __init__(self, df:pd.DataFrame):
         required_columns = [
-            ', 'Make', 'FuelType', 'FuelConsumption', 
+            'Make', 'FuelType', 'FuelConsumption', 
             'Co2EmissionsWltp', 'MassRunningOrder', 'BaseWheel', 'AxleWidthSteering']
+
         if not all(column in df.columns for column in required_columns):
-            raise ValueError(f"Le DataFrame doit contenir les colonnes")
+            raise ValueError(f"Le DataFrame doit contenir les colonnes: {required_columns}")
+
+        self.data = df.groupby(['Pool', 'Make']).agg({
+            'Make': 'count',
+            'Pool': 'count',
+            'FuelType': lambda x: x.mode()[0],
+            'FuelConsumption': 'mean',
+            'EnginePower': 'mean',
+            'Co2EmissionsWltp': 'mean',
+            'MassRunningOrder': 'mean',
+            'BaseWheel': 'mean',
+            'AxleWidthSteering': 'mean'})
+    
+
         
 
 ########### End of classes ##########
