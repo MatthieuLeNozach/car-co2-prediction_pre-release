@@ -73,7 +73,7 @@ def rename_columns(df):
         'InnovativeTechnology', 'InnovativeEmissionsReduction',
         'InnovativeEmissionsReductionWltp', 'DeviationFactor', 'VerificationFactor',
         'Status', 'RegistrationYear', 'RegistrationDate', 'FuelConsumption', 'ElectricRange'
-        ]
+    ]
     
     name_dict = dict(zip(abbrev_list, nom_colonne_list))
     df.rename(name_dict, axis=1, inplace=True)
@@ -88,14 +88,12 @@ def select_countries(df, countries:list):
 ########## Data cleaning ##########
 
 def drop_irrelevant_columns(df):
-    columns_to_drop = [
+    df = df.drop(columns=[
             'VehicleFamilyIdentification', 'ManufNameMS', 'TypeApprovalNumber', 
             'Type', 'Variant', 'Version', 'CommercialName', 'VehicleCategory',
            'TotalNewRegistrations', 'Co2EmissionsNedc', 'AxleWidthOther', 'Status',
            'InnovativeEmissionsReduction', 'DeviationFactor', 'VerificationFactor', 'Status',
-           'RegistrationYear'
-           ]
-    df = df.drop(columns=[col for col in columns_to_drop if col in df.columns])
+           'RegistrationYear'])
     return df
 
 
@@ -104,14 +102,13 @@ def conditional_column_update(df, condition_column, condition_value, target_colu
     return df
     
 
-def clean_manufacturer_columns(df):
+def clean_manufacturer_columns():
     df = conditional_column_update(df, 'Make', 'HONDA', 'Pool', 'HONDA-GROUP')
     df = conditional_column_update(df, 'Make', 'JAGUAR', 'Pool', 'TATA-MOTORS')
     df = conditional_column_update(df, 'Make', 'LAND ROVER', 'Pool', 'TATA-MOTORS')
     df = conditional_column_update(df, 'Make', 'RANGE-ROVER', 'Pool', 'TATA-MOTORS')
     df = conditional_column_update(df, 'Make', 'B M W', 'Make', 'BMW')
     df = conditional_column_update(df, 'Make', 'BMW I', 'Make', 'BMW')
-    return df
 
 
     

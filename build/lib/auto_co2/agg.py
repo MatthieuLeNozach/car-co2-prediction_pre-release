@@ -1,7 +1,8 @@
 import pandas as pd
 import requests
+import re
 import io
-from auto_co2.styles import generate_styles, displayer
+from auto_co2.styles import generate_styles, display_head
 
 
 ########## Classes ##########
@@ -14,7 +15,6 @@ class Countries:
         if not all(column in df.columns for column in required_columns):
             raise ValueError(f"Le DataFrame doit contenir les colonnes: {required_columns}")
         
-        pd.set_option('display.float_format', '{:.3f}'.format)       
         
         self.data = df.groupby('Country').agg({
             'ID': 'count',
@@ -27,29 +27,21 @@ class Countries:
             'BaseWheel': 'mean',
             'AxleWidthSteering': 'mean'})
         
-        
         self.data = self.data.rename(columns={'ID': 'Count'})
+        self.data = self.data.reset_index()
         
-        country_stats = pd.DataFrame(country_stats).transpose()
-        country_stats.index.name = 'Country'
-        self.data = self.data.join(country_stats, how='inner')
-
-        gdp = self.data.pop('gdp_per_capita')
-        self.data.insert(0, 'gdp_per_capita', gdp)
+        country_stats = pd.DataFrame(country_stats).transpose()\
+            .reset_index().rename(columns={'index': 'Country'})
+            
+        self.data = pd.merge(self.data, country_stats, on='Country', how='left')
         
-        pop = self.data.pop('population')        
-        self.data.insert(0, 'population', pop)
-
-        # Convert the index to a column
-        self.data.reset_index(inplace=True)
-                
     def __repr__(self):
-        return f"Countries(data={self.data.head()})"
+        return f"Manufacturers(data={self.data.head()})"
 
     def display(self, n=None, styles=None):
         if styles is None:
             styles = generate_styles()
-        displayer(self.data, n, styles)
+        display_head(self.data, n, styles)
 
 
 
@@ -62,10 +54,9 @@ class Manufacturers:
         if not all(column in df.columns for column in required_columns):
             raise ValueError(f"Le DataFrame doit contenir les colonnes: {required_columns}")
 
-        pd.set_option('display.float_format', '{:.3f}'.format)
-
         self.data = df.groupby(['Pool', 'Make']).agg({
             'Make': 'count',
+            'Pool': 'count',
             'FuelType': lambda x: x.mode()[0],
             'FuelConsumption': 'mean',
             'EnginePower': 'mean',
@@ -73,38 +64,11 @@ class Manufacturers:
             'MassRunningOrder': 'mean',
             'BaseWheel': 'mean',
             'AxleWidthSteering': 'mean'})
-        
-        self.data = self.data.rename(columns={'Make': 'Count'})
-        
-        total_count = self.data['Count'].sum()
-        market_share = ((self.data['Count'] / total_count) * 100).round(2)
-        self.data.insert(1, 'MarketShare(%)', market_share)
-                
-    def __repr__(self):
-        return f"Manufacturers(data={self.data.head()})"
-
-    def display(self, n=None, styles=None):
-        if styles is None:
-            styles = generate_styles()
-        displayer(self.data, n, styles)
+    
 
         
 
 ########### End of classes ##########
-
-
-
-
-########## Toolkit ##########
-def float_rounder(df, n=3):
-        float_cols = df.select_dtypes(include='float64').columns
-        return df[float_cols].round(n)
-
-
-
-########## End of toolkit ##########
-
-
 
 
 
