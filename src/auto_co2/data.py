@@ -7,7 +7,7 @@ import kaggle
 
 
 ########## Fetching data from Kaggle ##########
-def download_co2_data(auth_file_path, filepath='.'):
+def download_co2_data(auth_file_path, filepath='data/raw'):
     dataset_id = 'matthieulenozach/automobile-co2-emissions-eu-2021'
     dataset_name = dataset_id.split('/')[-1]  # Get the dataset name
 
@@ -25,14 +25,14 @@ def download_co2_data(auth_file_path, filepath='.'):
         del os.environ['KAGGLE_CONFIG_DIR']
     return dataset_name
 
-def load_co2_data(dataset_name="automobile-co2-emissions-eu-2021", filepath='.'):
+def load_co2_data(dataset_name="automobile-co2-emissions-eu-2021", filepath='data/raw'):
     with zipfile.ZipFile(f'{filepath}/{dataset_name}.zip', 'r') as zip_ref:
         zip_ref.extractall(filepath)
     filename = zip_ref.namelist()[0]  # Get the first file name in the zip
     data = pd.read_csv(f'{filepath}/{filename}', low_memory=False)
     return data
 
-def download_and_load_co2_data(auth_file_path, filepath='.'):
+def download_and_load_co2_data(auth_file_path, filepath='data/raw'):
     dataset_name = download_co2_data(auth_file_path, filepath)
     data = load_co2_data(dataset_name, filepath)
     return data
