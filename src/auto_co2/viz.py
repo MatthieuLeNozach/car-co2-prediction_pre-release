@@ -1,22 +1,23 @@
 from IPython.display import Image
 import numpy as np
 import pandas as pd
+
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
+from plotly.subplots import make_subplots
+
 import re
 import os
 import json
 import datetime
-
+import scipy.stats as stats
 
 from auto_co2.agg import Countries
 from auto_co2.styles import generate_styles
 
 
 ########## Plotly Tools ##########
-import datetime
-import os
 
 def save_plotly_fig(fig, filename, format='png'):
     """
@@ -263,6 +264,61 @@ def plot_heatmap(df:pd.DataFrame, interactive=True, filename=None, format='json'
         xaxis=dict(autorange='reversed', tickfont=dict(size=14)),
         yaxis=dict(tickfont=dict(size=14)))
 
+    if interactive:
+        fig.show()
+    else:
+        img_bytes = pio.to_image(fig, format='png')
+        display(Image(img_bytes))
+        
+    if filename is not None:
+        save_plotly_fig(fig, filename, format)
+
+
+def plot_qqplots(df:pd.DataFrame, interactive=True, filename=None, format='html'):
+    df_sample = df.select_dtypes(include=[np.number]).sample(n=10000, random_state=1)
+
+    # Create a subplot with 2 rows and 2 columns
+    fig = make_subplots(rows=4, cols=2)
+
+    # Loop over the first 4 columns of the DataFrame
+    for i, col in enumerate(df_sample.columns[0:8]):
+        # Calculate the theoretical quantiles and order them
+        theoretical_quantiles = np.sort(stats.norm.ppf((np.arange(len(df_sample[col])) + 0.5) / len(df_sample[col])))
+        
+        # Calculate the sample quantiles and order them
+        sample_quantiles = np.sort(df_sample[col])
+        
+        # Create a scatter plot for the QQ plot
+        fig.add_trace(go.Scatter(x=theoretical_quantiles, y=sample_quantiles, mode='markers', name=col), row=(i//2)+1, col=(i%2)+1)
+
+    # Update layout
+    fig.update_layout(height=1000, width=800, title_text="QQ Plots")
+
+    if interactive:
+        fig.show()
+    else:
+        img_bytes = pio.to_image(fig, format='png')
+        display(Image(img_bytes))
+        
+    if filename is not None:
+        save_plotly_fig(fig, filename, format)
+
+
+def plot_feature_distributions(df, interactive=True, filename=None, format='html'):
+    import plotly.subplots as sp
+    import plotly.graph_objs as go
+
+    fig = sp.make_subplots(rows=3, cols=3)
+
+    cols = ['MassRunningOrder', 'Co2EmissionsWltp', 'EngineCapacity', 'EnginePower', 'InnovativeEmissionsReductionWltp', 'FuelConsumption', 'ElectricRange']
+
+    for i, col_name in enumerate(cols):
+        row = i // 3 + 1
+        col = i % 3 + 1
+        fig.add_trace(go.Histogram(x=df[col_name], nbinsx=40, name=col_name), row=row, col=col)
+
+    fig.update_layout(height=1000, width=1100, title_text="Subplots")
+    
     if interactive:
         fig.show()
     else:

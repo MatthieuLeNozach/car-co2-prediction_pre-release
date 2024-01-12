@@ -41,7 +41,8 @@ def display_info(df, styles=None): # PANDAS (style)
     column_info = lines[5:-3]
     column_df = pd.DataFrame([re.split(r'\s\s+', line.strip()) for line in column_info])
     column_df = column_df.iloc[:, 1:]
-    column_df.columns = ['Column', 'Non-Null Count', 'Dtype']
+    column_names = ['Column', 'Non-Null Count', 'Dtype']
+    column_df.columns = column_names[:len(column_df.columns)]
     
     # Infos générales
     general_info = lines[1:3] + lines[-4:-1]
