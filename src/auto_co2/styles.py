@@ -70,7 +70,6 @@ def display_na(df): # PLOTLY METHOD
     proportions = df.isna().mean().sort_values(ascending=False)*100
     proportions = proportions.round(2)
 
-    # Create a table
     fig = go.Figure(data=[go.Table(
         header=dict(values=['Colonne', 'Valeurs manquantes (%)'],
                     fill_color='SteelBlue',

@@ -40,7 +40,7 @@ def download_and_load_co2_data(auth_file_path, filepath='data/raw'):
 ########## End of fetching data from Kaggle ##########
 
 
-########## Preprocessing data ##########
+########## Pre dataviz cleaning ##########
 def convert_dtypes(df):
     floats = df.select_dtypes(include=['float']).columns
     df.loc[:, floats] = df.loc[:, floats].astype('float32')
@@ -82,10 +82,7 @@ def rename_columns(df):
 def select_countries(df, countries:list):
     return df[df['Country'].isin(countries)]
 
-########## End of preprocessing data ##########
 
-
-########## Data cleaning ##########
 def drop_irrelevant_columns(df):
     to_drop = [
             'VehicleFamilyIdentification', 'ManufNameMS', 'TypeApprovalNumber', 
@@ -96,7 +93,6 @@ def drop_irrelevant_columns(df):
     
     df = df.drop(columns=[col for col in to_drop if col in df.columns])
     return df
-
 
 def conditional_column_update(df, condition_column, condition_value, target_column, target_value):
     df.loc[df[condition_column] == condition_value, target_column] = target_value
@@ -121,20 +117,6 @@ def clean_manufacturer_columns(df): # VIZ
  
     return df
 
-
-def column_remover(df, columns=None):
-    columns_to_drop = ['Country', 'Type', 'Variant', 'Version', 'Make', 'CommercialName', 'VehicleCategory',
-                        'TotalNewRegistrations', 'Co2EmissionsNedc', 'WltpTestMass','FuelMode', 
-                        'ElectricConsumption', 'InnovativeEmissionsReduction', 'DeviationFactor', 
-                        'VerificationFactor', 'Status','RegistrationYear', 'RegistrationDate',
-                        'Pool', 'CategoryOf']
-    if columns is None:
-        df = df.drop(columns=[col for col in columns_to_drop if col in df.columns])
-    else:
-        df = df.drop(columns=[col for col in columns if col in df.columns])
-    return df
-
-
 def correct_fueltype(df): # VIZ
     df.loc[df['FuelType'] == 'petrol/electric', 'FuelType'] = 'PETROL/ELECTRIC'
     df.loc[df['FuelType'] == 'E85', 'FuelType'] = 'ETHANOL'
@@ -142,15 +124,60 @@ def correct_fueltype(df): # VIZ
     return df
 
 
-def remove_fueltype(df, keep_fossil=False):
-    if keep_fossil:
-        df = df.drop(columns=['FuelType'])
+def dataviz_preprocessing(df, countries=None):
+    if countries is not None:
+        df = select_countries(df, countries)
+    df = convert_dtypes(df)
+    df = rename_columns(df)
+    df = drop_irrelevant_columns(df)
+    df = clean_manufacturer_columns(df)
+    df = correct_fueltype(df)
+    return df
+
+########## End of pre dataviz cleaning ##########
+
+
+########## ML Preprocessing ##########
+
+def column_remover(df, columns=None):
+    columns_to_drop = ['Country', 'Type', 'Variant', 'Version', 'Make', 'CommercialName', 'VehicleCategory',
+                        'TotalNewRegistrations', 'Co2EmissionsNedc', 'WltpTestMass','FuelMode', 
+                        'ElectricConsumption', 'InnovativeEmissionsReduction', 'DeviationFactor', 
+                        'VerificationFactor', 'Status','RegistrationYear', 'RegistrationDate',
+                        'Pool', 'CategoryOf', 'InnovativeEmissionsReductionWltp']
+    if columns is None:
+        df = df.drop(columns=[col for col in columns_to_drop if col in df.columns])
     else:
-        df.drop(df.loc[df['FuelType'].isin(['HYDROGEN', 'ELECTRIC', 'UNKNOWN'])].index, inplace=True)
+        df = df.drop(columns=[col for col in columns if col in df.columns])
     return df
 
 
-def standardize_innovtech(df, drop=True):
+def remove_fueltype(df, keep_fossil=False):
+    rows_t0 = len(df)
+    
+    if keep_fossil:
+        df.drop(df.loc[df['FuelType'].isin(['HYDROGEN', 'ELECTRIC', 'UNKNOWN'])].index, inplace=True)
+
+    else:
+        df = df.drop(columns=['FuelType'])
+        
+    rows_t1 = len(df)
+    print(f"FuelType rows dropped:{rows_t0 - rows_t1}")
+    
+    return df
+
+def remove_fuelconsumption(df):
+    rows_t0 = len(df)
+    
+    df =  df.drop(columns=['FuelConsumption'])
+    
+    rows_t1 = len(df)
+    print(f"FuelConsumption rows dropped:{rows_t0 - rows_t1}")
+    return df
+    
+
+
+def standardize_innovtech(df, drop=False):
     if drop:
         df = df.drop(columns=['InnovativeTechnology'])
     else:
@@ -167,7 +194,7 @@ def drop_residual_incomplete_rows(df):
             df = df[df[col].notna()]
 
     rows_t1 = len(df)
-    print(f"Number of rows dropped:{rows_t0 - rows_t1}")
+    print(f"Incomplete rows dropped:{rows_t0 - rows_t1}")
     return df
 
 
@@ -212,11 +239,23 @@ def save_clean_data(df, classification=False, pickle=True, filepath='data/proces
     print(f"Data saved to {filepath}/{filename}")
 
 
-def ml_preprocessing(df):
+def ml_preprocessing(df, countries=None, drop_fuel=True, elec_range_dummies=True):
+    rows_t0 = len(df)
+    if countries is not None:
+        df = select_countries(df, countries)
+    df = convert_dtypes(df)
+    df = rename_columns(df)
+    df = drop_irrelevant_columns(df)
     df = column_remover(df)
-    df = remove_fueltype(df)
+    
+    if drop_fuel:
+        df = remove_fuelconsumption(df)
+        
     df = standardize_innovtech(df)
-    df = electricrange_discretization(df, to_dummies=True)
+    df = electricrange_discretization(df, to_dummies=elec_range_dummies)
     df = drop_residual_incomplete_rows(df)
+
+    rows_t1 = len(df)
+    print(f"TOTAL NUMBER OF ROWS DROPPED:{rows_t0 - rows_t1}")
     
     return df
