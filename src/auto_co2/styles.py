@@ -1,6 +1,7 @@
 import pandas as pd
 import io
 import re
+from sklearn.metrics import classification_report
 
 
 ########## Project color style ##########
@@ -63,28 +64,6 @@ def display_describe(df, styles=None): # PANDAS (style)
 
 
 
-
-
-"""
-def display_na(df): # PLOTLY METHOD
-    proportions = df.isna().mean().sort_values(ascending=False)*100
-    proportions = proportions.round(2)
-
-    fig = go.Figure(data=[go.Table(
-        header=dict(values=['Colonne', 'Valeurs manquantes (%)'],
-                    fill_color='SteelBlue',
-                    align='left',
-                    font=dict(color='white', size=20)),
-        cells=dict(values=[proportions.index, proportions.values],
-                fill_color='PowderBlue',
-                align='left',
-                font=dict(size=12))
-    )])
-
-    fig.update_layout(height=1100)
-    fig.show()
-"""
-
 def display_na(df): # PANSAS (style)
     proportions = df.isna().mean().sort_values(ascending=False)*100
     proportions = proportions.round(2).to_frame().reset_index()
@@ -108,3 +87,25 @@ def display_na(df): # PANSAS (style)
 
 
 ########## End of table tools ##########
+
+
+########## ML Tables ##########
+
+def display_classification_report(y_true, y_pred, styles=None): 
+    report = classification_report(y_true, y_pred, output_dict=True)
+    report_df = pd.DataFrame(report).transpose()
+    
+    if styles is None:
+        styles = generate_styles()
+    
+    displayer(report_df, n=len(report_df), styles=styles)
+    
+    
+def display_feature_importances(model, data):
+    feats = {}
+    for feature, importance in zip(data.columns, model.feature_importances_):
+        feats[feature] = importance
+
+    importances  = pd.DataFrame.from_dict(feats, orient='index').rename(columns={0:'importance'})
+    importances = importances.sort_values(by='importance', ascending=False)
+    displayer(importances, n=None)

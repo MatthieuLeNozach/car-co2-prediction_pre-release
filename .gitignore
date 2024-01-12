@@ -1,4 +1,5 @@
 # Datasets volumineux
 data/raw
 data/processed
+temp
 temp.ipynb

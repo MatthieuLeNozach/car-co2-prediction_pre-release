@@ -3,8 +3,7 @@ import pandas as pd
 import zipfile
 import datetime
 import kaggle
-
-
+import pickle
 
 
 ########## Fetching data from Kaggle ##########
@@ -100,6 +99,7 @@ def conditional_column_update(df, condition_column, condition_value, target_colu
     return df
 
 def clean_manufacturer_columns(df): # VIZ
+    df = conditional_column_update(df, 'Make', 'TESLA', 'Pool', 'TESLA')
     df = conditional_column_update(df, 'Make', 'HONDA', 'Pool', 'HONDA-GROUP')
     df = conditional_column_update(df, 'Make', 'JAGUAR', 'Pool', 'TATA-MOTORS')
     df = conditional_column_update(df, 'Make', 'LAND ROVER', 'Pool', 'TATA-MOTORS')
@@ -114,8 +114,11 @@ def clean_manufacturer_columns(df): # VIZ
     df = conditional_column_update(df, 'Make', 'FORD - CNG-TECHNIK', 'Make', 'FORD')
     df = conditional_column_update(df, 'Make', 'MERCEDES', 'Make', 'MERCEDES-BENZ')
     df = conditional_column_update(df, 'Make', 'MERCEDES BENZ', 'Make', 'MERCEDES-BENZ') 
-    df = conditional_column_update(df, 'Make', 'LYNK & CO', 'Make', 'LYNK&CO')    
- 
+    df = conditional_column_update(df, 'Make', 'LYNK & CO', 'Make', 'LYNK&CO')  
+    df = conditional_column_update(df, 'Make', 'VOLKSWAGEN VW', 'Make', 'VOLKSWAGEN')
+    df = conditional_column_update(df, 'Make', 'VOLKSWAGEN, VW', 'Make', 'VOLKSWAGEN') 
+    df = conditional_column_update(df, 'Make', 'VOLKSWAGEN. VW	', 'Make', 'VOLKSWAGEN') 
+    df = conditional_column_update(df, 'Make', 'VW', 'Make', 'VOLKSWAGEN')
     return df
 
 def correct_fueltype(df): # VIZ
@@ -196,23 +199,6 @@ def drop_residual_incomplete_rows(df):
     print(f"Incomplete rows dropped:{rows_t0 - rows_t1}")
     return df
 
-   
-
-
-
-
-def save_processed_data(df, classification=False, pickle=True, filepath='../data/processed'):
-    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    os.makedirs(filepath, exist_ok=True)
-    if classification:
-        filename = f'co2_classification_{timestamp}'
-        df = get_classification_data(df)
-    else:
-        filename = f'co2_regression_{timestamp}'
-    if pickle:
-        df.to_pickle(f"{filepath}/{filename.split('.')[0]}.pkl")
-    df.to_csv(f'{filepath}/{filename}.csv', index=False)
-    print(f"Data saved to {filepath}/{filename}")
 
 
 def ml_preprocessing(df, countries=None, 
@@ -224,6 +210,7 @@ def ml_preprocessing(df, countries=None,
     
     if countries is not None:
         df = select_countries(df, countries)
+    print(f"Countries selected: {df['Country'].unique()}\n")
         
     df = convert_dtypes(df)
     df = rename_columns(df)
@@ -289,3 +276,65 @@ def dummify_all_features(df, dummy_columns=None):
         df = dummify(df, column)
     return df
     
+########## End of Feature Engineering ##########
+
+
+
+########## Persistence ##########
+
+
+def save_processed_data(df, classification=False, pickle=True):
+    filepath = '../data/processed'
+    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    os.makedirs(filepath, exist_ok=True)
+    if classification:
+        filename = f'co2_classification_{timestamp}'
+        df = get_classification_data(df)
+    else:
+        filename = f'co2_regression_{timestamp}'
+    if pickle:
+        df.to_pickle(f"{filepath}/{filename.split('.')[0]}.pkl")
+    else:
+        df.to_csv(f'{filepath}/{filename}.csv', index=False)
+    print(f"Data saved to {filepath}/{filename}")
+
+
+
+
+def save_model(model, model_name):
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filepath = '../models'
+    filename = f"{model_name}_{timestamp}"
+    os.makedirs(filepath, exist_ok=True)
+    
+    full_path = os.path.join(filepath, filename)
+    
+    with open(full_path, 'wb') as f:
+        pickle.dump(model, f)
+    print(f'Model saved at {full_path}')
+    
+    
+    
+    
+    
+def save_shap_values(shap_values, shap_sample, filename_prefix):
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filepath = '../output/interpretability'
+    filename_shap = f"{filename_prefix}_shap_values_{timestamp}.csv"
+    filename_explainer = f"{filename_prefix}_explainer_{timestamp}.csv"
+    os.makedirs(filepath, exist_ok=True)
+    
+    full_path_shap = os.path.join(filepath, filename_shap)
+    full_path_explainer = os.path.join(filepath, filename_explainer)
+    
+    # Save SHAP values to CSV
+    shap_values_np = np.concatenate(shap_values, axis=0) if isinstance(shap_values, list) else np.array(shap_values)
+    shap_values_df = pd.DataFrame(shap_values_np, columns=shap_sample.columns)
+    shap_values_df.to_csv(full_path_shap, index=False)
+    print(f'SHAP values saved at {full_path_shap}')
+
+    # Save explainer information to CSV
+    with open(full_path_explainer, 'w') as explainer_file:
+        explainer_file.write("feature\n")
+        explainer_file.write("\n".join(map(str, shap_sample.columns)))
+    print(f'Explainer information saved at {full_path_explainer}')

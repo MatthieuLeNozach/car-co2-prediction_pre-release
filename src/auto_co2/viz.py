@@ -5,6 +5,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
+import plotly.subplots as sp
 from plotly.subplots import make_subplots
 
 import re
@@ -13,7 +14,7 @@ import json
 import datetime
 import scipy.stats as stats
 
-from auto_co2.agg import Countries
+from auto_co2.agg import Countries, Manufacturers
 from auto_co2.styles import generate_styles
 
 from sklearn.metrics import confusion_matrix
@@ -22,35 +23,29 @@ from sklearn.metrics import confusion_matrix
 
 ########## Plotly Tools ##########
 
-def save_plotly_fig(fig, filename, format='png'):
+def save_plotly_fig(fig, format='png'):
     """
     Sauvegarde la figure figée au format PNG (Défaut) 
     ou la figue interactive (HTML)  
     ou la figure au fomat JSON
     dans le dossier output/figures
-    
     """
-    if format == 'html':
-        output_dir = "../output/figures/"
-    elif format == 'png':
-        output_dir = "../output/figures/"
-    elif format == 'json':
-        output_dir = "../output/figures/"
-    else:
-        raise ValueError("Invalid format. Must be 'html', 'png', or 'json'")
+    valid_formats = ['html', 'png', 'json']
+    if format not in valid_formats:
+        raise ValueError(f"Invalid format. Must be one of {valid_formats}")
 
-    # Crée le dossier cible s'il n'existe pas
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs("../output/figures", exist_ok=True)
     
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    unique_filename = f"{filename}_{timestamp}"
+    base_filename = fig.layout.title.text if fig.layout.title.text else 'untitled'
+    filename = f"{base_filename}_{timestamp}"
 
     if format == 'html':
-        fig.write_html(f"{output_dir}{unique_filename}.html")
+        fig.write_html(f"../output/figures/{filename}.html")
     elif format == 'png':
-        fig.write_image(f"{output_dir}{unique_filename}.png")
+        fig.write_image(f"../output/figures/{filename}.png")
     elif format == 'json':
-        fig.write_json(f"{output_dir}{unique_filename}.json")  
+        fig.write_json(f"../output/figures/{filename}.json")  
 
 
 
@@ -71,49 +66,54 @@ def load_plotly_json(filename):
 ########## End of Plotly Tools ##########
 
 ########## Countrywise visualization #########
-def co2_emissions_viz(countries: Countries, filename=None): # Plotly Express
+def co2_emissions_viz(countries:Countries, save=True, format='png'): # Plotly Express
     per_co2 = countries.data.sort_values(by='Co2EmissionsWltp', ascending=False)
     fig = px.bar(per_co2, x='Country', y='Co2EmissionsWltp', color='Co2EmissionsWltp', color_continuous_scale='Blues')
     fig.update_layout(title={'text': "Quel pays achète les véhicules les plus polluants? (CO2)",'x': 0.3})
     fig.show()
-    if filename is not None:
-        save_plotly_fig(fig, filename, format)
+    if save:
+        save_plotly_fig(fig, format)
+        
 
-def engine_power_viz(countries: Countries, filename=None): # Plotly Express
+def engine_power_viz(countries: Countries, save=True, format='png'): # Plotly Express
     per_engine = countries.data.sort_values(by='EnginePower', ascending=False)
     fig = px.bar(per_engine, x='Country', y='EnginePower', color='EnginePower', color_continuous_scale='Greens')
     fig.update_layout(title={'text': "Quel pays achète les véhicules les plus puissants? (KWh)",'x': 0.3})
     fig.show()
-    if filename is not None:
-        save_plotly_fig(fig, filename, format)
+    if save:
+        save_plotly_fig(fig, format)
+        
 
-def mass_viz(countries: Countries, filename=None): # Plotly Express
+def mass_viz(countries: Countries, save=True, format='png'): # Plotly Express
     per_mass = countries.data.sort_values(by='MassRunningOrder', ascending=False)
     fig = px.bar(per_mass, x='Country', y='MassRunningOrder', color='MassRunningOrder', color_continuous_scale='Reds')
     fig.update_layout(title={'text': "Quel pays achète les véhicules les plus lourds? (Kg)",'x': 0.3})
     fig.show()
-    if filename is not None:
-        save_plotly_fig(fig, filename, format)
+    if save:
+        save_plotly_fig(fig, format)
+        
 
-def countrywise_viz(countries: Countries, filename=None): # Plotly Express
-    if filename is not None:
-        co2_emissions_viz(countries, filename=f"{filename}_co2_emissions")
-        engine_power_viz(countries, filename=f"{filename}_engine_power")
-        mass_viz(countries, filename=f"{filename}_mass")
-    else:
-        co2_emissions_viz(countries)
-        engine_power_viz(countries)
-        mass_viz(countries)
+def countrywise_viz(countries: Countries, save=True, format='png'): # Plotly Express
+        co2_emissions_viz(countries, save=save, format=format)
+        engine_power_viz(countries, save=save, format=format)
+        mass_viz(countries, save=save, format=format)
 
 
 ########## End of countrywise visualization #########
 
 
-
 ########## Manufacturerwise visualization #########
+def plot_popular_fueltype(manufacturers:Manufacturers, save=True, format='png'):
+    # Group by Make and FuelType and count the number of each group
+    grouped_df = manufacturers.data.groupby(['Make', 'FuelType']).size().reset_index(name='Counts')
 
+    # Create bar plot
+    fig = px.bar(grouped_df, x='Make', y='Counts', color='FuelType', title="Most Common Fuel Types for Each Make")
+    fig.show()
 
-
+    # Save plot
+    if save:
+        save_plotly_fig(fig, format)
 
 
 
@@ -128,7 +128,7 @@ def countrywise_viz(countries: Countries, filename=None): # Plotly Express
 
 ######### Context visualization #########
 
-def plot_registrations_per_month(df:pd.DataFrame, filename=None, format='json'):
+def plot_registrations_per_month(df:pd.DataFrame, save=True, format='png'):
     mois = ['Janvier', 'Février', 'Mars', 'Avril', 
                         'Mai', 'Juin', 'Juil.', 'Août', 
                         'Sept.', 'Oct.', 'Nov.', 'Déc.']
@@ -156,8 +156,8 @@ def plot_registrations_per_month(df:pd.DataFrame, filename=None, format='json'):
         showlegend=False
     )
     fig.update_xaxes(ticktext=mois, tickvals=list(range(1, 13)))
-    if filename:
-        save_plotly_fig(fig, filename, format)
+    if save:
+        save_plotly_fig(fig, format)
 
     fig.show()
 
@@ -170,7 +170,7 @@ def plot_registrations_per_month(df:pd.DataFrame, filename=None, format='json'):
 
 ######### Case spectific visualization #########
 
-def plot_fueltype_distribution(df:pd.DataFrame, interactive=True, filename=None, format='json'):
+def plot_fueltype_distribution(df:pd.DataFrame, interactive=True, save=True, format='png'):
     """Affiche les boites à moustaches des émissions de CO2 par FuelType
 
     Args:
@@ -218,16 +218,14 @@ def plot_fueltype_distribution(df:pd.DataFrame, interactive=True, filename=None,
         img_bytes = pio.to_image(fig, format='png')
         display(Image(img_bytes))
         
-    if filename is not None:
-        save_plotly_fig(fig, filename, format)
+    if save:
+        save_plotly_fig(fig, format)
 
 
 
 
 
-
-
-def plot_correlation_heatmap(df:pd.DataFrame, interactive=True, filename=None, format='json'):
+def plot_correlation_heatmap(df:pd.DataFrame, interactive=True, save=True, format='png'):
     """Heatmap de corrélation des variables quantitatives
 
     Args:
@@ -277,11 +275,12 @@ def plot_correlation_heatmap(df:pd.DataFrame, interactive=True, filename=None, f
         img_bytes = pio.to_image(fig, format='png')
         display(Image(img_bytes))
         
-    if filename is not None:
-        save_plotly_fig(fig, filename, format)
+    if save:
+        save_plotly_fig(fig, format)
 
 
-def plot_qqplots(df:pd.DataFrame, interactive=True, filename=None, format='html'):
+
+def plot_qqplots(df:pd.DataFrame, interactive=True, save=True, format='png'):
     df_sample = df.select_dtypes(include=[np.number]).sample(n=10000, random_state=1)
 
     # Create a subplot with 2 rows and 2 columns
@@ -306,15 +305,12 @@ def plot_qqplots(df:pd.DataFrame, interactive=True, filename=None, format='html'
         img_bytes = pio.to_image(fig, format='png')
         display(Image(img_bytes))
         
-    if filename is not None:
-        save_plotly_fig(fig, filename, format)
+    if save:
+        save_plotly_fig(fig, format)
 
 
 
-def plot_feature_distributions(df, interactive=True, filename=None, format='html'):
-    import plotly.subplots as sp
-    import plotly.graph_objs as go
-
+def plot_feature_distributions(df, interactive=True, save=True, format='png'):
     fig = sp.make_subplots(rows=3, cols=3)
 
     cols = ['MassRunningOrder', 'Co2EmissionsWltp', 'EngineCapacity', 'EnginePower', 'InnovativeEmissionsReductionWltp', 'FuelConsumption', 'ElectricRange']
@@ -332,27 +328,35 @@ def plot_feature_distributions(df, interactive=True, filename=None, format='html
         img_bytes = pio.to_image(fig, format='png')
         display(Image(img_bytes))
         
-    if filename is not None:
-        save_plotly_fig(fig, filename, format)
+    if save:
+        save_plotly_fig(fig, format)
         
         
         
 ######### End of case specific visualization #########
 
 
-########## Inferential Model Visualizations ##########
+########## Model Visualizations ##########
 
-def plot_confusion_matrix(y_true, y_pred, palette='Blues', interactive=True, filename=None, format='png', title=''):
+def plot_confusion_matrix(y_true, y_pred, 
+                          palette='Blues', 
+                          classes=None, 
+                          interactive=True, 
+                          save=True,
+                          format='png', 
+                          title=''):
+    
     cm = confusion_matrix(y_true, y_pred)
-    classes = list(range(cm.shape[0]))
+    if classes is None:
+        classes = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+    else:
+        classes = list(range(cm.shape[0]))
 
-    # Create heatmap
     heatmap = go.Heatmap(z=cm, 
                          x=classes, 
                          y=classes, 
                          colorscale=palette)
 
-    # Create annotations
     annotations = []
     for i, row in enumerate(cm):
         for j, value in enumerate(row):
@@ -364,7 +368,6 @@ def plot_confusion_matrix(y_true, y_pred, palette='Blues', interactive=True, fil
                                      showarrow=False, 
                                      font=dict(color=color, size=16)))
 
-    # Create figure
     fig = go.Figure(data=heatmap)
     fig.update_layout(
         title=dict(
@@ -378,12 +381,110 @@ def plot_confusion_matrix(y_true, y_pred, palette='Blues', interactive=True, fil
         xaxis=dict(title='Labels prédits', tickfont=dict(size=14)),
         yaxis=dict(title='Vrais labels', tickfont=dict(size=14)))
 
-    # Show or save figure
     if interactive:
         fig.show()
     else:
         img_bytes = pio.to_image(fig, format=format)
         display(Image(img_bytes))
         
-    if filename is not None:
-        save_plotly_fig(fig, filename, format)
+    if save:
+        save_plotly_fig(fig, format)
+        
+
+def plot_pca_variance(pca, n_features,  title='', interactive=True, save=True, format='png'):
+
+    x_values = list(range(1, n_features+1))
+
+    # Create a scatter plot of the explained variance ratio
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x_values, y=pca.explained_variance_ratio_[:n_features], mode='lines+markers', name='Variance'))
+    fig.add_trace(go.Scatter(x=x_values, y=np.cumsum(pca.explained_variance_ratio_)[:n_features], mode='lines+markers', name='Cumulative Variance'))
+
+    fig.update_layout(title='Part de la variance expliquée, composants PCA'+title,
+                      xaxis=dict(title='Component'),
+                      yaxis=dict(title='Part de la variance expliquée'))
+
+    if interactive:
+        fig.show()
+    else:
+        img_bytes = pio.to_image(fig, format=format)
+        display(Image(img_bytes))
+        
+    if save:
+        save_plotly_fig(fig, format)
+        
+        
+        
+def plot_xgboost(results, metric='mlogloss', title='', interactive=True, save=True, format='png'):
+    num_epochs = len(next(iter(results.values()))[metric])
+    x_axis = list(range(0, num_epochs))
+
+    fig = go.Figure()
+    for key in results.keys():
+        fig.add_trace(go.Scatter(x=x_axis, y=results[key][metric], mode='lines', name=key))
+
+    fig.update_layout(title='XGBoost'+title, xaxis_title='Epoch', yaxis_title=metric)
+    if interactive:
+        fig.show()
+    else:
+        img_bytes = pio.to_image(fig, format=format)
+        display(Image(img_bytes))
+        
+    if save:
+        save_plotly_fig(fig, format)    
+    
+
+
+
+def plot_feature_importance(model, max_num_features=20, title='', interactive=True, save=True, format='png'):
+    
+    importance = model.get_booster().get_score(importance_type='weight')
+    sorted_importance = dict(sorted(importance.items(), key=lambda item: item[1], reverse=False))
+    limited_importance = dict(list(sorted_importance.items())[:max_num_features])
+
+    fig = go.Figure()
+    for key in limited_importance.keys():
+        fig.add_trace(go.Bar(y=[key], x=[limited_importance[key]], orientation='h', name=key))
+
+    fig.update_layout(title='Feature Importance'+title, yaxis_title='Features', xaxis_title='Importance')
+    if interactive:
+        fig.show()
+    else:
+        img_bytes = pio.to_image(fig, format=format)
+        display(Image(img_bytes))
+        
+    if save:
+        save_plotly_fig(fig, format)
+        
+        
+
+def plot_shap_summary(shap_explanation, feature_names, max_num_features=20, title='', interactive=True, save=True, format='png'):
+    # Get SHAP values from the explanation object
+    shap_values = shap_explanation.values
+
+    # Calculate the mean absolute SHAP values for each feature
+    mean_abs_shap_values = np.mean(np.abs(shap_values), axis=0)
+
+    # Create a dictionary of feature names and mean absolute SHAP values
+    importance = dict(zip(feature_names, mean_abs_shap_values))
+
+    # Sort features according to importance
+    sorted_importance = dict(sorted(importance.items(), key=lambda item: item[1], reverse=False))
+
+    # Limit the number of features
+    limited_importance = dict(list(sorted_importance.items())[:max_num_features])
+
+    # Create a bar chart
+    fig = go.Figure()
+    for key in limited_importance.keys():
+        fig.add_trace(go.Bar(y=[key], x=[limited_importance[key]], orientation='h', name=key))
+
+    fig.update_layout(title='SHAP Summary'+title, yaxis_title='Features', xaxis_title='Importance')
+    if interactive:
+        fig.show()
+    else:
+        img_bytes = pio.to_image(fig, format=format)
+        display(Image(img_bytes))
+        
+    if save:
+        save_plotly_fig(fig, format)

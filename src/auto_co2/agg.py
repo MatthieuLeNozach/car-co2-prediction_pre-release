@@ -46,11 +46,18 @@ class Countries:
                 
     def __repr__(self):
         return f"Countries(data={self.data.head()})"
+    
+    def sort(self, by='population', ascending=False):
+        self.data.sort_values(by=by, ascending=ascending, inplace=True)
 
     def display(self, n=None, styles=None):
         if styles is None:
             styles = generate_styles()
         displayer(self.data, n, styles)
+        
+    def display_sorted(self, by='population', ascending=False, n=None, styles=None):
+        self.sort(by=by, ascending=ascending)
+        self.display(n, styles)
 
 
 
@@ -80,14 +87,25 @@ class Manufacturers:
         total_count = self.data['Count'].sum()
         market_share = ((self.data['Count'] / total_count) * 100).round(2)
         self.data.insert(1, 'MarketShare(%)', market_share)
+        # Filter out rows where 'Count' is less than 0.2% of total_count
+        self.data = self.data[self.data['Count'] >= 0.002 * total_count]
                 
     def __repr__(self):
         return f"Manufacturers(data={self.data.head()})"
+    
+    def sort(self, by='Count', ascending=False):
+        self.data.sort_values(by=by, ascending=ascending, inplace=True)
+
 
     def display(self, n=None, styles=None):
         if styles is None:
             styles = generate_styles()
         displayer(self.data, n, styles)
+    
+    def display_sorted(self, by='Count', ascending=False, n=None, styles=None):
+        self.sort(by=by, ascending=ascending)
+        self.display(n, styles)
+        
 
         
 

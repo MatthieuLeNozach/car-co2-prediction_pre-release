@@ -1,3 +1,9 @@
+import pandas as pd
+import io
+import re
+from sklearn.metrics import classification_report
+
+
 ########## Project color style ##########
 def generate_styles(header_color='steelblue', odd_row_color='aliceblue', even_row_color='white'):
     styles = [
@@ -13,11 +19,13 @@ def generate_styles(header_color='steelblue', odd_row_color='aliceblue', even_ro
 
 
 ########## Table Tools ##########
-def display_head(df, n=5, styles=None): # PANDAS (style)
+def displayer(df, n=5, styles=None): # PANDAS (style)
     if styles is None:
         styles = generate_styles()
     
-    styled_df = df.head(n).style.set_table_styles(styles)
+    format_dict = {col: "{:.3f}" for col in df.select_dtypes('float').columns}
+    
+    styled_df = df.head(n).style.format(format_dict).set_table_styles(styles)
     display(styled_df)
     
 
@@ -34,7 +42,8 @@ def display_info(df, styles=None): # PANDAS (style)
     column_info = lines[5:-3]
     column_df = pd.DataFrame([re.split(r'\s\s+', line.strip()) for line in column_info])
     column_df = column_df.iloc[:, 1:]
-    column_df.columns = ['Column', 'Non-Null Count', 'Dtype']
+    column_names = ['Column', 'Non-Null Count', 'Dtype']
+    column_df.columns = column_names[:len(column_df.columns)]
     
     # Infos générales
     general_info = lines[1:3] + lines[-4:-1]
@@ -43,44 +52,17 @@ def display_info(df, styles=None): # PANDAS (style)
     styled_column_df = column_df.style.set_table_styles(styles)
     styled_general_df = general_df.style.set_table_styles(styles)
     
-    display(styled_column_df)
-    display(styled_general_df)
+    displayer(column_df, n=len(column_df), styles=styles)
+    displayer(general_df, n=len(general_df), styles=styles)
     
     
 def display_describe(df, styles=None): # PANDAS (style)
     describe_df = df.describe().transpose().reset_index()
     describe_df.columns = ['Colonne', 'count', 'mean', 'std', 'min', '25%', '50%', '75%', 'max']
     
-    if styles is None:
-        styles = generate_styles()     
-    
-    styled_df = describe_df.style.set_table_styles(styles)
-    display(styled_df)
+    displayer(describe_df, n=len(describe_df), styles=styles)
 
 
-
-
-
-"""
-def display_na(df): # PLOTLY METHOD
-    proportions = df.isna().mean().sort_values(ascending=False)*100
-    proportions = proportions.round(2)
-
-    # Create a table
-    fig = go.Figure(data=[go.Table(
-        header=dict(values=['Colonne', 'Valeurs manquantes (%)'],
-                    fill_color='SteelBlue',
-                    align='left',
-                    font=dict(color='white', size=20)),
-        cells=dict(values=[proportions.index, proportions.values],
-                fill_color='PowderBlue',
-                align='left',
-                font=dict(size=12))
-    )])
-
-    fig.update_layout(height=1100)
-    fig.show()
-"""
 
 def display_na(df): # PANSAS (style)
     proportions = df.isna().mean().sort_values(ascending=False)*100
@@ -105,3 +87,15 @@ def display_na(df): # PANSAS (style)
 
 
 ########## End of table tools ##########
+
+
+########## ML Tables ##########
+
+def display_classification_report(y_true, y_pred, styles=None): 
+    report = classification_report(y_true, y_pred, output_dict=True)
+    report_df = pd.DataFrame(report).transpose()
+    
+    if styles is None:
+        styles = generate_styles()
+    
+    displayer(report_df, n=len(report_df), styles=styles)
