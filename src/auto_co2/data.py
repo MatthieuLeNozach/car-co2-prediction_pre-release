@@ -1,13 +1,14 @@
 import os
 import pandas as pd
 import zipfile
+import datetime
 import kaggle
 
 
 
 
 ########## Fetching data from Kaggle ##########
-def download_co2_data(auth_file_path, filepath='data/raw'):
+def download_co2_data(auth_file_path, filepath='../data/raw'):
     dataset_id = 'matthieulenozach/automobile-co2-emissions-eu-2021'
     dataset_name = dataset_id.split('/')[-1]  # Get the dataset name
 
@@ -25,14 +26,14 @@ def download_co2_data(auth_file_path, filepath='data/raw'):
         del os.environ['KAGGLE_CONFIG_DIR']
     return dataset_name
 
-def load_co2_data(dataset_name="automobile-co2-emissions-eu-2021", filepath='data/raw'):
+def load_co2_data(dataset_name="automobile-co2-emissions-eu-2021", filepath='../data/raw'):
     with zipfile.ZipFile(f'{filepath}/{dataset_name}.zip', 'r') as zip_ref:
         zip_ref.extractall(filepath)
     filename = zip_ref.namelist()[0] 
     data = pd.read_csv(f'{filepath}/{filename}', low_memory=False)
     return data
 
-def download_and_load_co2_data(auth_file_path, filepath='data/raw'):
+def download_and_load_co2_data(auth_file_path, filepath='../data/raw'):
     dataset_name = download_co2_data(auth_file_path, filepath)
     data = load_co2_data(dataset_name, filepath)
     return data
@@ -139,12 +140,20 @@ def dataviz_preprocessing(df, countries=None):
 
 ########## ML Preprocessing ##########
 
-def column_remover(df, columns=None):
-    columns_to_drop = ['Country', 'Type', 'Variant', 'Version', 'Make', 'CommercialName', 'VehicleCategory',
+def column_remover(df, columns=None, axlewidth=True, engine_capacity=True, fuel_consumption=True):
+    columns_to_drop = ['Country', 'ManufacturerName', 'ManufNameOem', 'Type', 'Variant', 
+                        'Version', 'Make', 'CommercialName', 'VehicleCategory',
                         'TotalNewRegistrations', 'Co2EmissionsNedc', 'WltpTestMass','FuelMode', 
                         'ElectricConsumption', 'InnovativeEmissionsReduction', 'DeviationFactor', 
                         'VerificationFactor', 'Status','RegistrationYear', 'RegistrationDate',
-                        'Pool', 'CategoryOf', 'InnovativeEmissionsReductionWltp']
+                        'CategoryOf', 'InnovativeEmissionsReductionWltp', 'ID']
+    if axlewidth:
+        columns_to_drop.append('AxleWidthSteering')
+    if engine_capacity:
+        columns_to_drop.append('EngineCapacity')
+    if fuel_consumption:
+        columns_to_drop.append('FuelConsumption')
+        
     if columns is None:
         df = df.drop(columns=[col for col in columns_to_drop if col in df.columns])
     else:
@@ -165,16 +174,6 @@ def remove_fueltype(df, keep_fossil=False):
     print(f"FuelType rows dropped:{rows_t0 - rows_t1}")
     
     return df
-
-def remove_fuelconsumption(df):
-    rows_t0 = len(df)
-    
-    df =  df.drop(columns=['FuelConsumption'])
-    
-    rows_t1 = len(df)
-    print(f"FuelConsumption rows dropped:{rows_t0 - rows_t1}")
-    return df
-    
 
 
 def standardize_innovtech(df, drop=False):
@@ -197,6 +196,61 @@ def drop_residual_incomplete_rows(df):
     print(f"Incomplete rows dropped:{rows_t0 - rows_t1}")
     return df
 
+   
+
+
+
+
+def save_processed_data(df, classification=False, pickle=True, filepath='../data/processed'):
+    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    os.makedirs(filepath, exist_ok=True)
+    if classification:
+        filename = f'co2_classification_{timestamp}'
+        df = get_classification_data(df)
+    else:
+        filename = f'co2_regression_{timestamp}'
+    if pickle:
+        df.to_pickle(f"{filepath}/{filename.split('.')[0]}.pkl")
+    df.to_csv(f'{filepath}/{filename}.csv', index=False)
+    print(f"Data saved to {filepath}/{filename}")
+
+
+def ml_preprocessing(df, countries=None, 
+                     rem_fuel_consumption=True, 
+                     rem_axlewidth=True, 
+                     rem_engine_capacity=True):
+    
+    rows_t0 = len(df)
+    
+    if countries is not None:
+        df = select_countries(df, countries)
+        
+    df = convert_dtypes(df)
+    df = rename_columns(df)
+    df = drop_irrelevant_columns(df)
+    df = column_remover(df, axlewidth=rem_axlewidth, engine_capacity=rem_engine_capacity, fuel_consumption=rem_fuel_consumption)  
+    df = standardize_innovtech(df)
+    df = drop_residual_incomplete_rows(df)
+
+    rows_t1 = len(df)
+    print(f"TOTAL NUMBER OF ROWS DROPPED:{rows_t0 - rows_t1}")
+    
+    return df
+
+########## End of ML Preprocessing ##########
+
+
+
+########## Feature Engineering ##########
+
+def co2_grade_discretization(df):
+    labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+    bins = [-1, 100, 120, 140, 160, 200, 250, 1000]
+
+    grades = pd.cut(df['Co2EmissionsWltp'], bins=bins, labels=labels)
+    df['Co2Grade'] = grades
+    return df    
+
 
 def electricrange_discretization(df, to_dummies=False):
     df['ElectricRange'].fillna(0, inplace=True)
@@ -207,17 +261,8 @@ def electricrange_discretization(df, to_dummies=False):
     if to_dummies:
         df = df.join(pd.get_dummies(data=df['ElectricRange'], dtype=int, prefix='ElecRange'))
         df.drop('ElectricRange', axis=1, inplace=True)
-    
+
     return df
-
-def co2_grade_discretization(df):
-    labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
-    bins = [0, 100, 120, 140, 160, 200, 250, 500]
-
-    grades = pd.cut(df['Co2EmissionsWltp'], bins=bins, labels=labels)
-    df['Co2Grade'] = grades
-    return df    
-    
 
 
 def get_classification_data(df):
@@ -227,35 +272,20 @@ def get_classification_data(df):
 
 
 
-def save_clean_data(df, classification=False, pickle=True, filepath='data/processed'):
-    if classification:
-        filename = 'co2_classification'
-        get_classification_data(df)
-    else:
-        filename = 'co2_regression'
-    if pickle:
-        df.to_pickle(f"{filepath}/{filename.split('.')[0]}.pkl")
-    df.to_csv(f'{filepath}/{filename}.csv', index=False)
-    print(f"Data saved to {filepath}/{filename}")
-
-
-def ml_preprocessing(df, countries=None, drop_fuel=True, elec_range_dummies=True):
-    rows_t0 = len(df)
-    if countries is not None:
-        df = select_countries(df, countries)
-    df = convert_dtypes(df)
-    df = rename_columns(df)
-    df = drop_irrelevant_columns(df)
-    df = column_remover(df)
-    
-    if drop_fuel:
-        df = remove_fuelconsumption(df)
-        
-    df = standardize_innovtech(df)
-    df = electricrange_discretization(df, to_dummies=elec_range_dummies)
-    df = drop_residual_incomplete_rows(df)
-
-    rows_t1 = len(df)
-    print(f"TOTAL NUMBER OF ROWS DROPPED:{rows_t0 - rows_t1}")
-    
+def dummify(df, column):
+    dummies = pd.get_dummies(data=df[column], dtype=int, prefix=f"{column}")
+    df = df.join(dummies)
+    df.drop(columns=[column], inplace=True)
     return df
+
+def dummify_all_features(df, dummy_columns=None):
+    if dummy_columns is None:
+        dummy_columns = ['Pool', 'FuelType']
+        df = electricrange_discretization(df, to_dummies=True) 
+    else:
+        df = dummify(df, dummy_columns)
+        
+    for column in dummy_columns:
+        df = dummify(df, column)
+    return df
+    

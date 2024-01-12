@@ -16,6 +16,9 @@ import scipy.stats as stats
 from auto_co2.agg import Countries
 from auto_co2.styles import generate_styles
 
+from sklearn.metrics import confusion_matrix
+
+
 
 ########## Plotly Tools ##########
 
@@ -224,7 +227,7 @@ def plot_fueltype_distribution(df:pd.DataFrame, interactive=True, filename=None,
 
 
 
-def plot_heatmap(df:pd.DataFrame, interactive=True, filename=None, format='json'):
+def plot_correlation_heatmap(df:pd.DataFrame, interactive=True, filename=None, format='json'):
     """Heatmap de corrélation des variables quantitatives
 
     Args:
@@ -238,14 +241,18 @@ def plot_heatmap(df:pd.DataFrame, interactive=True, filename=None, format='json'
     df = df.select_dtypes(include=[np.number])
     # Matrice de corrélation plotly
     correlation_matrix = df.corr()
-    heatmap = go.Heatmap(z=correlation_matrix, x=correlation_matrix.columns, y=correlation_matrix.columns, colorscale='RdBu_r')
+    heatmap = go.Heatmap(z=correlation_matrix, 
+                         x=correlation_matrix.columns, 
+                         y=correlation_matrix.columns, 
+                         colorscale='RdBu_r')
 
     # Affichage des coefficients de corrélation
     annotations = []
     for i, row in enumerate(correlation_matrix.values):
         for j, value in enumerate(row):
             color  = 'white' if value < -0.5 or value > 0.5 else 'black'
-            annotations.append(go.layout.Annotation(text=str(round(value, 2)), 
+            annotations.append(
+                go.layout.Annotation(text=str(round(value, 2)), 
                                                     x=correlation_matrix.columns[j], 
                                                     y=correlation_matrix.columns[i], 
                                                     showarrow=False, 
@@ -288,7 +295,6 @@ def plot_qqplots(df:pd.DataFrame, interactive=True, filename=None, format='html'
         # Calculate the sample quantiles and order them
         sample_quantiles = np.sort(df_sample[col])
         
-        # Create a scatter plot for the QQ plot
         fig.add_trace(go.Scatter(x=theoretical_quantiles, y=sample_quantiles, mode='markers', name=col), row=(i//2)+1, col=(i%2)+1)
 
     # Update layout
@@ -302,6 +308,7 @@ def plot_qqplots(df:pd.DataFrame, interactive=True, filename=None, format='html'
         
     if filename is not None:
         save_plotly_fig(fig, filename, format)
+
 
 
 def plot_feature_distributions(df, interactive=True, filename=None, format='html'):
@@ -323,6 +330,59 @@ def plot_feature_distributions(df, interactive=True, filename=None, format='html
         fig.show()
     else:
         img_bytes = pio.to_image(fig, format='png')
+        display(Image(img_bytes))
+        
+    if filename is not None:
+        save_plotly_fig(fig, filename, format)
+        
+        
+        
+######### End of case specific visualization #########
+
+
+########## Inferential Model Visualizations ##########
+
+def plot_confusion_matrix(y_true, y_pred, palette='Blues', interactive=True, filename=None, format='png', title=''):
+    cm = confusion_matrix(y_true, y_pred)
+    classes = list(range(cm.shape[0]))
+
+    # Create heatmap
+    heatmap = go.Heatmap(z=cm, 
+                         x=classes, 
+                         y=classes, 
+                         colorscale=palette)
+
+    # Create annotations
+    annotations = []
+    for i, row in enumerate(cm):
+        for j, value in enumerate(row):
+            color  = 'white' if value > cm.max() / 2 else 'black'
+            annotations.append(
+                go.layout.Annotation(text=str(value), 
+                                     x=j, 
+                                     y=i, 
+                                     showarrow=False, 
+                                     font=dict(color=color, size=16)))
+
+    # Create figure
+    fig = go.Figure(data=heatmap)
+    fig.update_layout(
+        title=dict(
+            text=f"Matrice de confusion {title}",
+            x=0.5,  # Center the title
+            font=dict(size=24)),
+        autosize=False,
+        width=600,
+        height=600,
+        annotations=annotations,
+        xaxis=dict(title='Labels prédits', tickfont=dict(size=14)),
+        yaxis=dict(title='Vrais labels', tickfont=dict(size=14)))
+
+    # Show or save figure
+    if interactive:
+        fig.show()
+    else:
+        img_bytes = pio.to_image(fig, format=format)
         display(Image(img_bytes))
         
     if filename is not None:
