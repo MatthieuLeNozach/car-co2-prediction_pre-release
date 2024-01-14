@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import plotly.subplots as sp
 from plotly.subplots import make_subplots
+import colorlover as cl
 
 import re
 import os
@@ -14,9 +15,10 @@ import json
 import datetime
 from itertools import cycle
 
+import math
 import scipy.stats as stats
 from sklearn.metrics import confusion_matrix, roc_curve, auc
-from sklearn.preprocessing import label_binarize
+from sklearn.preprocessing import label_binarize, scale
 
 from auto_co2.styles import generate_styles
 
@@ -63,6 +65,32 @@ def load_plotly_json(filename):
         fig_dict = json.load(f)
 
     return go.Figure(fig_dict)
+
+
+def add_legend(fig, text="Data Source: European Environment Agency, 2021"):
+    fig.update_layout(
+        annotations=[
+            dict(
+                x=1,  # Rightmost position
+                y=-0.15,  # Keep it slightly below the plot
+                showarrow=False,
+                text=text,
+                xref="paper",
+                yref="paper",
+                xanchor='right',  # Anchor the text to the right
+                yanchor='auto'
+            )
+        ]
+    )
+    return fig
+
+def increase_font_size(fig, font_size=24):
+    fig.update_layout(
+        height=400, 
+        width=1200, 
+        title_font=dict(size=font_size)
+    )
+    return fig
 
 
 ########## End of Plotly Tools ##########
@@ -233,7 +261,7 @@ def plot_fueltype_distribution(df:pd.DataFrame, interactive=True, save=True, for
 
 
 
-def plot_correlation_heatmap(df:pd.DataFrame, interactive=True, save=True, format='png'):
+def plot_correlation_heatmap(df:pd.DataFrame, title='', interactive=True, save=True, format='png'):
     """Heatmap de corrélation des variables quantitatives
 
     Args:
@@ -245,7 +273,6 @@ def plot_correlation_heatmap(df:pd.DataFrame, interactive=True, save=True, forma
     """
 
     df = df.select_dtypes(include=[np.number])
-    # Matrice de corrélation plotly
     correlation_matrix = df.corr()
     heatmap = go.Heatmap(z=correlation_matrix, 
                          x=correlation_matrix.columns, 
@@ -267,7 +294,7 @@ def plot_correlation_heatmap(df:pd.DataFrame, interactive=True, save=True, forma
     fig = go.Figure(data=heatmap)
     fig.update_layout(
         title=dict(
-            text='Corrélation des variables quantitatives',
+            text=f'Corrélation des variables quantitatives {title}',
             x=0.55,  # Center the title
             font=dict(size=24)),
         autosize=False,
@@ -288,8 +315,9 @@ def plot_correlation_heatmap(df:pd.DataFrame, interactive=True, save=True, forma
 
 
 
-def plot_qqplots(df:pd.DataFrame, interactive=True, save=True, format='png'):
-    df_sample = df.select_dtypes(include=[np.number]).sample(n=10000, random_state=1)
+def plot_qqplots(df:pd.DataFrame, title='', interactive=True, save=True, format='png'):
+    n_samples = min(10000, df.shape[0])  # Sample 10,000 or the total number of rows, whichever is smaller
+    df_sample = df.select_dtypes(include=[np.number]).sample(n=n_samples, random_state=1)
 
     # Create a subplot with 2 rows and 2 columns
     fig = make_subplots(rows=4, cols=2)
@@ -305,7 +333,7 @@ def plot_qqplots(df:pd.DataFrame, interactive=True, save=True, format='png'):
         fig.add_trace(go.Scatter(x=theoretical_quantiles, y=sample_quantiles, mode='markers', name=col), row=(i//2)+1, col=(i%2)+1)
 
     # Update layout
-    fig.update_layout(height=1000, width=800, title_text="QQ Plots")
+    fig.update_layout(height=1000, width=800, title_text=f"Quantiles observés vs quantiles d'une distribution normale (QQ Plots) {title}")
 
     if interactive:
         fig.show()
@@ -318,18 +346,19 @@ def plot_qqplots(df:pd.DataFrame, interactive=True, save=True, format='png'):
 
 
 
-def plot_feature_distributions(df, interactive=True, save=True, format='png'):
+def plot_feature_distributions(df, title='', interactive=True, save=True, format='png'):
     fig = sp.make_subplots(rows=3, cols=3)
-
-    cols = ['MassRunningOrder', 'Co2EmissionsWltp', 'EngineCapacity', 'EnginePower', 'InnovativeEmissionsReductionWltp', 'FuelConsumption', 'ElectricRange']
+    df_num = df.select_dtypes(include=[np.number])
+    cols = [col for col in df_num.columns]  # Only keep numeric columns
 
     for i, col_name in enumerate(cols):
         row = i // 3 + 1
         col = i % 3 + 1
         fig.add_trace(go.Histogram(x=df[col_name], nbinsx=40, name=col_name), row=row, col=col)
+        fig.update_xaxes(title_text=col_name, row=row, col=col)  # Add x-axis label
 
-    fig.update_layout(height=1000, width=1100, title_text="Subplots")
-    
+    fig.update_layout(height=1000, width=1100, title_text=f"Distribution des variables explicatives {title}", showlegend=False)  # Add top-level title and remove legend
+
     if interactive:
         fig.show()
     else:
@@ -343,12 +372,12 @@ def plot_feature_distributions(df, interactive=True, save=True, format='png'):
 def plot_distribution_pie(target, title='', interactive=True, save=True, format='png'):
     counts = pd.Series(target).value_counts()
 
-    fig = go.Figure(data=[go.Pie(labels=counts.index, values=counts.values, hole=.3, textinfo='label+percent')])
+    fig = go.Figure(data=[go.Pie(labels=counts.index, values=counts.values, hole=.3, textinfo="label+percent")])
 
     fig.update_layout(
         autosize=False,
         margin=dict(t=50, b=50, l=50, r=50),
-        title_text=f'Répartition des classes {title}',
+        title_text=f"Répartition des classes {title}",
         title_x=0.5
     )
 
@@ -419,6 +448,95 @@ def plot_confusion_matrix(y_true, y_pred,
     if save:
         save_plotly_fig(fig, format)
         
+
+
+def plot_regression_diagnostics(y_test, pred_test, y_train, title, interactive=True, save=True, format='png'):
+    fig = make_subplots(rows=2, cols=2, subplot_titles=("Valeurs réelles VS valeurs prédites (test)",
+                                                       "Répartition des résidus (test)",
+                                                       "Distribution des résidus (test)",
+                                                       "Diagramme Quantile-Quantile"))
+
+    # Actual vs Predicted values
+    residuals = pred_test - y_test
+    fig.add_trace(go.Scatter(x=y_test, y=pred_test, mode='markers', marker=dict(color='#2E8B57', size=5, opacity=0.5)), row=1, col=1)
+    fig.add_trace(go.Scatter(x=[min(y_test), max(y_test)], y=[min(y_test), max(y_test)], mode='lines', line=dict(color='red')), row=1, col=1)
+
+    # Residuals Distribution
+    fig.add_trace(go.Scatter(x=y_test, y=residuals, mode='markers', marker=dict(color='#980a10', size=5, opacity=0.1)), row=1, col=2)
+    fig.add_trace(go.Scatter(x=[min(y_test), max(y_test)], y=[0, 0], mode='lines', line=dict(color='#0a5798')), row=1, col=2)
+
+    # Histogramme des résidus
+    fig.add_trace(go.Histogram(x=residuals, nbinsx=40), row=2, col=1)
+
+    # Q-Q plot
+    residuals_norm = scale(residuals)
+    (osm, osr), (slope, intercept, r) = stats.probplot(residuals_norm, dist='norm', fit=True)
+    fig.add_trace(go.Scatter(x=osm, y=osr, mode='markers'), row=2, col=2)
+    fig.add_trace(go.Scatter(x=osm, y=slope*osm + intercept, mode='lines'), row=2, col=2)
+
+    fig.update_layout(height=1000, width=1300, showlegend=False, title_text=title, title_x=0.5, title_font=dict(size=24))
+    
+    if interactive:
+        fig.show()
+    else:
+        img_bytes = pio.to_image(fig, format=format)
+        display(Image(img_bytes))
+        
+    if save:
+        save_plotly_fig(fig, format)
+        
+        
+def plot_lr_elasticnet(lr_en, title='', interactive=True, save=True, format='png'):
+    alphas = lr_en.alphas_
+
+    fig = go.Figure()
+    for i in range(lr_en.mse_path_.shape[0]):
+        fig.add_trace(go.Scatter(x=alphas, y=lr_en.mse_path_[i,:,:].mean(axis=1), mode='lines', name='Moyenne pour l1_ratio= %.2f' %lr_en.l1_ratio[i]))
+
+    fig.update_layout(title='Mean squared error pour chaque lambda'+title, xaxis_title='Alpha', yaxis_title='Mean squared error')
+
+    if interactive:
+        fig.show()
+    else:
+        img_bytes = pio.to_image(fig, format=format)
+        display(Image(img_bytes))
+        
+    if save:
+        save_plotly_fig(fig, format)
+        
+        
+def plot_mse_folds(lr_en, l1_ratios):
+    # Define a color for each fold number
+    colors = ['red', 'green', 'blue', 'orange', 'purple']
+
+    # Calculate the number of rows and columns for the subplots
+    n_rows = math.ceil(len(l1_ratios) / 2)
+    n_cols = 2 if len(l1_ratios) > 1 else 1
+
+    # Create subplots
+    fig = make_subplots(rows=n_rows, cols=n_cols, subplot_titles=[f'l1_ratio={l1_ratio}' for l1_ratio in l1_ratios])
+
+    # Add a line for each fold in each subplot
+    for i, l1_ratio in enumerate(l1_ratios):
+        row = i // n_cols + 1
+        col = i % n_cols + 1
+        for j, fold in enumerate(lr_en.mse_path_[i]):
+            fig.add_trace(go.Scatter(x=lr_en.alphas_, y=fold, mode='lines', name=f'Fold {j+1}', line=dict(color=colors[j])), row=row, col=col)
+
+        # Add a line for the average MSE across folds in each subplot
+        avg_mse = lr_en.mse_path_[i].mean(axis=0)
+        fig.add_trace(go.Scatter(x=lr_en.alphas_, y=avg_mse, mode='lines', name='Average across the folds', line=dict(color='black', width=2, dash='dot')), row=row, col=col)
+
+        # Add a vertical line for the chosen alpha in each subplot
+        fig.add_shape(type='line', x0=lr_en.alpha_, x1=lr_en.alpha_, y0=avg_mse.min(), y1=avg_mse.max(), line=dict(color='black', dash='dash'), row=row, col=col)
+
+    # Update y-axes to have the same scale
+    fig.update_yaxes(matches='y')
+    fig.update_layout(height=300*n_rows, width=600*n_cols, title_text="Mean square error on each fold")
+    fig.update_xaxes(title_text='Alphas')
+    fig.show()
+                
+
 
 def plot_pca_variance(pca, n_features,  title='', interactive=True, save=True, format='png'):
 

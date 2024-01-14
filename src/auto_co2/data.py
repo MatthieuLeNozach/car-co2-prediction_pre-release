@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import zipfile
 import datetime
-from datetime import datetime
+import datetime
 from xgboost import XGBClassifier, XGBRegressor
 import kaggle
 import pickle
@@ -277,7 +277,7 @@ def dummify(df, column):
     df.drop(columns=[column], inplace=True)
     return df
 
-def dummify_all_features(df, dummy_columns=None):
+def dummify_all_categoricals(df, dummy_columns=None):
     if dummy_columns is None:
         dummy_columns = ['Pool', 'FuelType']
         df = discretize_electricrange(df, to_dummies=True) 

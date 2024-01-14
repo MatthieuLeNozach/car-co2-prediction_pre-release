@@ -310,31 +310,6 @@ class CarDataAggregator:
 
 
 ########## Toolkit ##########
-def add_legend(fig, text="Data Source: European Environment Agency, 2021"):
-    fig.update_layout(
-        annotations=[
-            dict(
-                x=1,  # Rightmost position
-                y=-0.15,  # Keep it slightly below the plot
-                showarrow=False,
-                text=text,
-                xref="paper",
-                yref="paper",
-                xanchor='right',  # Anchor the text to the right
-                yanchor='auto'
-            )
-        ]
-    )
-    return fig
-
-def increase_font_size(fig, font_size=24):
-    fig.update_layout(
-        height=400, 
-        width=1200, 
-        title_font=dict(size=font_size)
-    )
-    return fig
-
 
 def float_rounder(df, n=3):
         float_cols = df.select_dtypes(include='float64').columns
