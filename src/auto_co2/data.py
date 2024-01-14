@@ -1,9 +1,14 @@
 import os
+import numpy as np
 import pandas as pd
 import zipfile
 import datetime
+from datetime import datetime
+from xgboost import XGBClassifier, XGBRegressor
 import kaggle
 import pickle
+from tensorflow.keras.models import Model
+
 
 
 ########## Fetching data from Kaggle ##########
@@ -40,7 +45,7 @@ def download_and_load_co2_data(auth_file_path, filepath='../data/raw'):
 ########## End of fetching data from Kaggle ##########
 
 
-########## Pre dataviz cleaning ##########
+########## General data cleaning ##########
 def convert_dtypes(df):
     floats = df.select_dtypes(include=['float']).columns
     df.loc[:, floats] = df.loc[:, floats].astype('float32')
@@ -86,7 +91,7 @@ def select_countries(df, countries:list):
 def drop_irrelevant_columns(df):
     to_drop = [
             'VehicleFamilyIdentification', 'ManufNameMS', 'TypeApprovalNumber', 
-            'Type', 'Variant', 'Version', 'CommercialName', 'VehicleCategory',
+            'Type', 'Variant', 'Version', 'VehicleCategory',
            'TotalNewRegistrations', 'Co2EmissionsNedc', 'AxleWidthOther', 'Status',
            'InnovativeEmissionsReduction', 'DeviationFactor', 'VerificationFactor', 'Status',
            'RegistrationYear']
@@ -127,25 +132,36 @@ def correct_fueltype(df): # VIZ
     df.loc[df['FuelType'] == 'NG-BIOMETHANE', 'FuelType'] = 'NATURALGAS'
     return df
 
-
-def dataviz_preprocessing(df, countries=None):
+    # ***** High Level Function: PRE CLEANING ***** #
+def data_preprocess(df, countries=None):
     if countries is not None:
         df = select_countries(df, countries)
     df = convert_dtypes(df)
     df = rename_columns(df)
+    return df
+    # ***** End of High Level Function: PRE CLEANING ***** #
+
+    # ***** High Level Function: VIZ CLEANING ***** #
+def dataviz_preprocess(df, countries=None):
+    df = data_preprocess(df, countries)
     df = drop_irrelevant_columns(df)
     df = clean_manufacturer_columns(df)
     df = correct_fueltype(df)
+    df = discretize_co2(df)
+    df.loc[df['ElectricRange'].isna(), 'ElectricRange'] = 0 
+    df = drop_residual_incomplete_rows(df)  
+    df['CommercialName'] = df['CommercialName'].str.replace('[^a-zA-Z0-9\s/-]', '')
     return df
+    # ***** End of High Level Function: VIZ ***** #
 
-########## End of pre dataviz cleaning ##########
+########## End of General Data Cleaning ##########
 
 
 ########## ML Preprocessing ##########
 
-def column_remover(df, columns=None, axlewidth=True, engine_capacity=True, fuel_consumption=True):
+def remove_columns(df, columns=None, axlewidth=True, engine_capacity=True, fuel_consumption=True):
     columns_to_drop = ['Country', 'ManufacturerName', 'ManufNameOem', 'Type', 'Variant', 
-                        'Version', 'Make', 'CommercialName', 'VehicleCategory',
+                        'Version', 'Make', 'CommercialName', 'VehicleCategory', 'CommercialName',
                         'TotalNewRegistrations', 'Co2EmissionsNedc', 'WltpTestMass','FuelMode', 
                         'ElectricConsumption', 'InnovativeEmissionsReduction', 'DeviationFactor', 
                         'VerificationFactor', 'Status','RegistrationYear', 'RegistrationDate',
@@ -200,22 +216,17 @@ def drop_residual_incomplete_rows(df):
     return df
 
 
-
-def ml_preprocessing(df, countries=None, 
+# ***** High Level Function: ML CLEANING ***** #
+def ml_preprocess(df, countries=None, 
                      rem_fuel_consumption=True, 
                      rem_axlewidth=True, 
                      rem_engine_capacity=True):
     
     rows_t0 = len(df)
     
-    if countries is not None:
-        df = select_countries(df, countries)
-    print(f"Countries selected: {df['Country'].unique()}\n")
-        
-    df = convert_dtypes(df)
-    df = rename_columns(df)
+    df = data_preprocess(df, countries)
     df = drop_irrelevant_columns(df)
-    df = column_remover(df, axlewidth=rem_axlewidth, engine_capacity=rem_engine_capacity, fuel_consumption=rem_fuel_consumption)  
+    df = remove_columns(df, axlewidth=rem_axlewidth, engine_capacity=rem_engine_capacity, fuel_consumption=rem_fuel_consumption)  
     df = standardize_innovtech(df)
     df = drop_residual_incomplete_rows(df)
 
@@ -223,6 +234,7 @@ def ml_preprocessing(df, countries=None,
     print(f"TOTAL NUMBER OF ROWS DROPPED:{rows_t0 - rows_t1}")
     
     return df
+# ***** end of High Level Function: ML CLEANING ***** #
 
 ########## End of ML Preprocessing ##########
 
@@ -230,7 +242,7 @@ def ml_preprocessing(df, countries=None,
 
 ########## Feature Engineering ##########
 
-def co2_grade_discretization(df):
+def discretize_co2(df):
     labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
     bins = [-1, 100, 120, 140, 160, 200, 250, 1000]
 
@@ -239,7 +251,7 @@ def co2_grade_discretization(df):
     return df    
 
 
-def electricrange_discretization(df, to_dummies=False):
+def discretize_electricrange(df, to_dummies=False):
     df['ElectricRange'].fillna(0, inplace=True)
     bins = [-float('inf'),0,50,100,150,300]
     labels = ['NO_RANGE', '0to50', '50to100', '100to150', '150+']
@@ -253,7 +265,7 @@ def electricrange_discretization(df, to_dummies=False):
 
 
 def get_classification_data(df):
-        df = co2_grade_discretization(df)
+        df = discretize_co2(df)
         df = df.drop(columns=['Co2EmissionsWltp'])
         return df
 
@@ -268,7 +280,7 @@ def dummify(df, column):
 def dummify_all_features(df, dummy_columns=None):
     if dummy_columns is None:
         dummy_columns = ['Pool', 'FuelType']
-        df = electricrange_discretization(df, to_dummies=True) 
+        df = discretize_electricrange(df, to_dummies=True) 
     else:
         df = dummify(df, dummy_columns)
         
@@ -301,23 +313,33 @@ def save_processed_data(df, classification=False, pickle=True):
 
 
 
-def save_model(model, model_name):
+def save_model(model, model_type='other'):
+    model_name = type(model).__name__
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filepath = '../models'
     filename = f"{model_name}_{timestamp}"
     os.makedirs(filepath, exist_ok=True)
     
-    full_path = os.path.join(filepath, filename)
-    
-    with open(full_path, 'wb') as f:
-        pickle.dump(model, f)
+    if model_type == 'xgb' and isinstance(model, (XGBClassifier, XGBRegressor)):
+        filename += '.model'
+        full_path = os.path.join(filepath, filename)
+        model.save_model(full_path)
+    elif model_type == 'keras' and isinstance(model, Model):
+        filename += '.h5'
+        full_path = os.path.join(filepath, filename)
+        model.save(full_path)
+    else:
+        filename += '.pkl'
+        full_path = os.path.join(filepath, filename)
+        with open(full_path, 'wb') as f:
+            pickle.dump(model, f)
     print(f'Model saved at {full_path}')
     
     
     
     
-    
-def save_shap_values(shap_values, shap_sample, filename_prefix):
+def save_shap_values(shap_values, shap_sample):
+    filename_prefix = type(shap_values).__name__
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filepath = '../output/interpretability'
     filename_shap = f"{filename_prefix}_shap_values_{timestamp}.csv"

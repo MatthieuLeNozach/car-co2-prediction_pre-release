@@ -12,12 +12,13 @@ import re
 import os
 import json
 import datetime
+from itertools import cycle
+
 import scipy.stats as stats
+from sklearn.metrics import confusion_matrix, roc_curve, auc
+from sklearn.preprocessing import label_binarize
 
-from auto_co2.agg import Countries, Manufacturers
 from auto_co2.styles import generate_styles
-
-from sklearn.metrics import confusion_matrix
 
 
 
@@ -39,6 +40,7 @@ def save_plotly_fig(fig, format='png'):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     base_filename = fig.layout.title.text if fig.layout.title.text else 'untitled'
     filename = f"{base_filename}_{timestamp}"
+    filename = re.sub('[^a-zA-Z0-9-_]', '_', filename)
 
     if format == 'html':
         fig.write_html(f"../output/figures/{filename}.html")
@@ -66,7 +68,7 @@ def load_plotly_json(filename):
 ########## End of Plotly Tools ##########
 
 ########## Countrywise visualization #########
-def co2_emissions_viz(countries:Countries, save=True, format='png'): # Plotly Express
+def co2_emissions_viz(countrie, save=True, format='png'): # Plotly Express
     per_co2 = countries.data.sort_values(by='Co2EmissionsWltp', ascending=False)
     fig = px.bar(per_co2, x='Country', y='Co2EmissionsWltp', color='Co2EmissionsWltp', color_continuous_scale='Blues')
     fig.update_layout(title={'text': "Quel pays achète les véhicules les plus polluants? (CO2)",'x': 0.3})
@@ -75,7 +77,7 @@ def co2_emissions_viz(countries:Countries, save=True, format='png'): # Plotly Ex
         save_plotly_fig(fig, format)
         
 
-def engine_power_viz(countries: Countries, save=True, format='png'): # Plotly Express
+def engine_power_viz(countries, save=True, format='png'): # Plotly Express
     per_engine = countries.data.sort_values(by='EnginePower', ascending=False)
     fig = px.bar(per_engine, x='Country', y='EnginePower', color='EnginePower', color_continuous_scale='Greens')
     fig.update_layout(title={'text': "Quel pays achète les véhicules les plus puissants? (KWh)",'x': 0.3})
@@ -84,7 +86,7 @@ def engine_power_viz(countries: Countries, save=True, format='png'): # Plotly Ex
         save_plotly_fig(fig, format)
         
 
-def mass_viz(countries: Countries, save=True, format='png'): # Plotly Express
+def mass_viz(countries, save=True, format='png'): # Plotly Express
     per_mass = countries.data.sort_values(by='MassRunningOrder', ascending=False)
     fig = px.bar(per_mass, x='Country', y='MassRunningOrder', color='MassRunningOrder', color_continuous_scale='Reds')
     fig.update_layout(title={'text': "Quel pays achète les véhicules les plus lourds? (Kg)",'x': 0.3})
@@ -93,7 +95,7 @@ def mass_viz(countries: Countries, save=True, format='png'): # Plotly Express
         save_plotly_fig(fig, format)
         
 
-def countrywise_viz(countries: Countries, save=True, format='png'): # Plotly Express
+def countrywise_viz(countries, save=True, format='png'): # Plotly Express
         co2_emissions_viz(countries, save=save, format=format)
         engine_power_viz(countries, save=save, format=format)
         mass_viz(countries, save=save, format=format)
@@ -103,19 +105,25 @@ def countrywise_viz(countries: Countries, save=True, format='png'): # Plotly Exp
 
 
 ########## Manufacturerwise visualization #########
-def plot_popular_fueltype(manufacturers:Manufacturers, save=True, format='png'):
-    # Group by Make and FuelType and count the number of each group
-    grouped_df = manufacturers.data.groupby(['Make', 'FuelType']).size().reset_index(name='Counts')
+def plot_popular_fueltype(manufacturers, save=True, format='png'):
+    # Group by Pool and Make and sum the Counts for each group
+    grouped_df = manufacturers.data.groupby(['Pool', 'Make'])['Count'].sum().reset_index(name='Counts')
 
-    # Create bar plot
-    fig = px.bar(grouped_df, x='Make', y='Counts', color='FuelType', title="Most Common Fuel Types for Each Make")
+    # Create a list of traces
+    traces = []
+    colors = cl.scales['12']['qual']['Paired']  # Get a list of 12 distinct colors
+    make_colors = {make: colors[i % len(colors)] for i, make in enumerate(grouped_df['Make'].unique())}  # Create a color map
+    
+    for make in grouped_df['Make'].unique():
+        df = grouped_df[grouped_df['Make'] == make]
+        traces.append(go.Bar(x=df['Pool'], y=df['Counts'], name=make, marker_color=make_colors[make]))
+
+    layout = go.Layout(barmode='stack', title="Répartition des types de carburants par marque/groupe automobile")
+    fig = go.Figure(data=traces, layout=layout)
     fig.show()
 
-    # Save plot
     if save:
         save_plotly_fig(fig, format)
-
-
 
 
 
@@ -332,11 +340,32 @@ def plot_feature_distributions(df, interactive=True, save=True, format='png'):
         save_plotly_fig(fig, format)
         
         
+def plot_distribution_pie(target, title='', interactive=True, save=True, format='png'):
+    counts = pd.Series(target).value_counts()
+
+    fig = go.Figure(data=[go.Pie(labels=counts.index, values=counts.values, hole=.3, textinfo='label+percent')])
+
+    fig.update_layout(
+        autosize=False,
+        margin=dict(t=50, b=50, l=50, r=50),
+        title_text=f'Répartition des classes {title}',
+        title_x=0.5
+    )
+
+    if interactive:
+        fig.show()
+    else:
+        img_bytes = pio.to_image(fig, format=format)
+        display(Image(img_bytes))
+        
+    if save:
+        save_plotly_fig(fig, format)
         
 ######### End of case specific visualization #########
 
 
 ########## Model Visualizations ##########
+
 
 def plot_confusion_matrix(y_true, y_pred, 
                           palette='Blues', 
@@ -403,6 +432,8 @@ def plot_pca_variance(pca, n_features,  title='', interactive=True, save=True, f
     fig.update_layout(title='Part de la variance expliquée, composants PCA'+title,
                       xaxis=dict(title='Component'),
                       yaxis=dict(title='Part de la variance expliquée'))
+    fig.update_layout(height=700, width=1000)
+
 
     if interactive:
         fig.show()
@@ -434,7 +465,48 @@ def plot_xgboost(results, metric='mlogloss', title='', interactive=True, save=Tr
         save_plotly_fig(fig, format)    
     
 
+def plot_roc_curves(y_test, y_pred, title='', interactive=True, save=True, format='png'):
+    # Determine unique classes
+    classes = np.unique(y_test)
 
+    # Binarize the output
+    y_test_bin = label_binarize(y_test, classes=classes)
+    n_classes = y_test_bin.shape[1]
+
+    # Compute ROC curve and ROC area for each class
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_pred[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    # Create a Figure
+    fig = go.Figure()
+
+    # Add ROC curves to the Figure
+    colors = cycle(['aqua', 'darkorange', 'cornflowerblue', 'green', 'red', 'blue', 'yellow'])
+    for i, color in zip(range(n_classes), colors):
+        fig.add_trace(go.Scatter(x=fpr[i], y=tpr[i], mode='lines', name='ROC curve of class {0} (area = {1:0.2f})'.format(i, roc_auc[i]), line=dict(color=color)))
+
+    # Add diagonal line
+    fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Random', line=dict(color='black', dash='dash')))
+
+    # Update layout
+    fig.update_layout(title='Courbes ROC: '+title, xaxis_title='False Positive Rate', yaxis_title='True Positive Rate', autosize=False, width=600, height=600, margin=dict(l=50, r=50, b=100, t=100, pad=4))
+    fig.update_layout(height=700, width=1000)
+
+    # Show or save the Figure
+    if interactive:
+        fig.show()
+    else:
+        img_bytes = pio.to_image(fig, format=format)
+        display(Image(img_bytes))
+        
+    if save:
+        save_plotly_fig(fig, format)
+        
+        
 
 def plot_feature_importance(model, max_num_features=20, title='', interactive=True, save=True, format='png'):
     
@@ -447,6 +519,35 @@ def plot_feature_importance(model, max_num_features=20, title='', interactive=Tr
         fig.add_trace(go.Bar(y=[key], x=[limited_importance[key]], orientation='h', name=key))
 
     fig.update_layout(title='Feature Importance'+title, yaxis_title='Features', xaxis_title='Importance')
+    fig.update_layout(height=700, width=1000)
+
+    if interactive:
+        fig.show()
+    else:
+        img_bytes = pio.to_image(fig, format=format)
+        display(Image(img_bytes))
+        
+    if save:
+        save_plotly_fig(fig, format)
+        
+        
+        
+def plot_training_history(training_history, title='', interactive=True, save=True, format='png'):
+    fig = make_subplots(rows=2, cols=1)
+
+    fig.add_trace(go.Scatter(y=training_history.history['accuracy'], mode='lines', name='Train Accuracy'), row=1, col=1)
+    fig.add_trace(go.Scatter(y=training_history.history['val_accuracy'], mode='lines', name='Validation Accuracy'), row=1, col=1)
+    fig.add_trace(go.Scatter(y=training_history.history['loss'], mode='lines', name='Train Loss'), row=2, col=1)
+    fig.add_trace(go.Scatter(y=training_history.history['val_loss'], mode='lines', name='Validation Loss'), row=2, col=1)
+
+    fig.update_xaxes(title_text="Epoch", row=1, col=1)
+    fig.update_xaxes(title_text="Epoch", row=2, col=1)
+
+    fig.update_yaxes(title_text="Accuracy", row=1, col=1)
+    fig.update_yaxes(title_text="Loss", row=2, col=1)
+
+    fig.update_layout(height=600, width=600, title_text="Model Accuracy and Loss" + title)
+
     if interactive:
         fig.show()
     else:

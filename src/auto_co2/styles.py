@@ -19,13 +19,17 @@ def generate_styles(header_color='steelblue', odd_row_color='aliceblue', even_ro
 
 
 ########## Table Tools ##########
-def displayer(df, n=5, styles=None): # PANDAS (style)
+def displayer(df, n=5, styles=None, title=None):  # Added title parameter
     if styles is None:
         styles = generate_styles()
     
     format_dict = {col: "{:.3f}" for col in df.select_dtypes('float').columns}
     
     styled_df = df.head(n).style.format(format_dict).set_table_styles(styles)
+    
+    if title is not None:  # If a title is provided, set it
+        styled_df = styled_df.set_caption(f'<h2>{title}</h2>')  # Use HTML tags to increase the size
+    
     display(styled_df)
     
 
