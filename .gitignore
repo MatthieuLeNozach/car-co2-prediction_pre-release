@@ -2,5 +2,6 @@
 models
 data/raw
 data/processed
+output/interpretability
 temp
 temp.ipynb
