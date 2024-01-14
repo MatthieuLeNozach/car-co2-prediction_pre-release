@@ -277,10 +277,11 @@ def dummify(df, column):
     df.drop(columns=[column], inplace=True)
     return df
 
-def dummify_all_categoricals(df, dummy_columns=None):
+def dummify_all_categoricals(df, dummy_columns=None, should_discretize_electricrange=True):
     if dummy_columns is None:
         dummy_columns = ['Pool', 'FuelType']
-        df = discretize_electricrange(df, to_dummies=True) 
+        if should_discretize_electricrange:
+            df = discretize_electricrange(df, to_dummies=True) 
     else:
         df = dummify(df, dummy_columns)
         
