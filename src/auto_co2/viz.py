@@ -6,6 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
 import plotly.subplots as sp
+import plotly.figure_factory as ff
 from plotly.subplots import make_subplots
 import colorlover as cl
 
@@ -17,6 +18,7 @@ from itertools import cycle
 
 import math
 import scipy.stats as stats
+from scipy.stats import gaussian_kde
 from sklearn.metrics import confusion_matrix, roc_curve, auc
 from sklearn.preprocessing import label_binarize, scale
 
@@ -390,6 +392,58 @@ def plot_distribution_pie(target, title='', interactive=True, save=True, format=
     if save:
         save_plotly_fig(fig, format)
         
+        
+        
+def plot_continuous_distribution(s, title='', interactive=True, save=True, format='png'):
+    # Calculate the Kernel Density Estimation of the series
+    x = np.linspace(s.min(), s.max(), 1000)
+    kde = gaussian_kde(s)
+    y = kde.evaluate(x)
+
+    # Create the line plot for the KDE
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=y, mode='lines', name='KDE', yaxis='y2'))
+
+    # Add a histogram
+    fig.add_trace(go.Histogram(x=s, nbinsx=40, name='Histogram'))
+
+    # Add title and labels
+    fig.update_layout(
+        title={
+            'text': f'Courbe KDE de {title}',
+            'y':0.9,
+            'x':0.5,
+            'xanchor': 'center',
+            'yanchor': 'top',
+            'font': dict(
+                size=20
+            )
+        },
+        xaxis_title=s.name,
+        yaxis_title='Count',
+        yaxis2=dict(
+            title='Density',
+            overlaying='y',
+            side='right'
+        ),
+        barmode='overlay'
+    )
+
+    # Make the histogram semi-transparent
+    fig.data[1].marker.line.width = 1
+    fig.data[1].marker.line.color = "black"
+    fig.data[1].opacity = 0.5
+
+    if interactive:
+        fig.show()
+    else:
+        img_bytes = pio.to_image(fig, format=format)
+        display(Image(img_bytes))
+        
+    if save:
+        save_plotly_fig(fig, format)
+        
+        
 ######### End of case specific visualization #########
 
 
@@ -699,6 +753,55 @@ def plot_shap_summary(shap_explanation, feature_names, max_num_features=20, titl
         fig.add_trace(go.Bar(y=[key], x=[limited_importance[key]], orientation='h', name=key))
 
     fig.update_layout(title='SHAP Summary'+title, yaxis_title='Features', xaxis_title='Importance')
+    if interactive:
+        fig.show()
+    else:
+        img_bytes = pio.to_image(fig, format=format)
+        display(Image(img_bytes))
+        
+    if save:
+        save_plotly_fig(fig, format)
+        
+        
+        
+def plot_shap_dependence(feature, interaction_feature, shap_values, X, title='', interactive=True, save=True, format='png'):
+    # Get the SHAP values and feature values for the specified features
+    shap_values_feature = shap_values[:, X.columns.get_loc(feature)]
+    feature_values = X[feature].values
+    interaction_values = X[interaction_feature].values
+
+    # Create a 2D density plot
+    fig = ff.create_2d_density(
+        x=feature_values, 
+        y=shap_values_feature, 
+        colorscale='Viridis',
+        hist_color='rgba(0, 0, 0, 0)',
+        point_size=3
+    )
+
+    # Add a scatter plot for the interaction feature
+    fig.add_trace(
+        go.Scatter(
+            x=interaction_values, 
+            y=shap_values_feature, 
+            mode='markers',
+            marker=dict(
+                size=4,
+                color=interaction_values,
+                colorscale='Viridis',
+                showscale=True
+            ),
+            text=interaction_values,
+            name=interaction_feature
+        )
+    )
+
+    fig.update_layout(
+        title=f'SHAP Dependence Plot: {feature} vs SHAP values',
+        xaxis_title=feature,
+        yaxis_title='SHAP values',
+        showlegend=True)
+
     if interactive:
         fig.show()
     else:

@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import zipfile
 import datetime
-import datetime
 from xgboost import XGBClassifier, XGBRegressor
 import kaggle
 import pickle
@@ -316,7 +315,7 @@ def save_processed_data(df, classification=False, pickle=True):
 
 def save_model(model, model_type='other'):
     model_name = type(model).__name__
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     filepath = '../models'
     filename = f"{model_name}_{timestamp}"
     os.makedirs(filepath, exist_ok=True)
@@ -341,7 +340,7 @@ def save_model(model, model_type='other'):
     
 def save_shap_values(shap_values, shap_sample):
     filename_prefix = type(shap_values).__name__
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     filepath = '../output/interpretability'
     filename_shap = f"{filename_prefix}_shap_values_{timestamp}.csv"
     filename_explainer = f"{filename_prefix}_explainer_{timestamp}.csv"
