@@ -229,6 +229,7 @@ def ml_preprocess(df, countries=None,
     df = remove_columns(df, axlewidth=rem_axlewidth, engine_capacity=rem_engine_capacity, fuel_consumption=rem_fuel_consumption)  
     df = standardize_innovtech(df)
     df = drop_residual_incomplete_rows(df)
+    df = df['ElectricRange'].fillna(0, inplace=True)
 
     rows_t1 = len(df)
     print(f"TOTAL NUMBER OF ROWS DROPPED:{rows_t0 - rows_t1}")
@@ -252,7 +253,6 @@ def discretize_co2(df):
 
 
 def discretize_electricrange(df, to_dummies=False):
-    df['ElectricRange'].fillna(0, inplace=True)
     bins = [-float('inf'),0,50,100,150,300]
     labels = ['NO_RANGE', '0to50', '50to100', '100to150', '150+']
     df['ElectricRange'] = pd.cut(df['ElectricRange'], bins=bins, labels=labels)
@@ -277,7 +277,7 @@ def dummify(df, column):
     df.drop(columns=[column], inplace=True)
     return df
 
-def dummify_all_categoricals(df, dummy_columns=None, should_discretize_electricrange=True):
+def dummify_all_categoricals(df, dummy_columns=None, should_discretize_electricrange=False):
     if dummy_columns is None:
         dummy_columns = ['Pool', 'FuelType']
         if should_discretize_electricrange:
