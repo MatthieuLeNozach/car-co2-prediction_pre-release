@@ -12,36 +12,68 @@ from tensorflow.keras.models import Model
 
 
 ########## Fetching data from Kaggle ##########
-def download_co2_data(auth_file_path, filepath='../data/raw'):
+
+########### Proposition de modification #############################################
+# Cela concerne 2 fonctions
+
+def download_co2_data( auth_file_path=None, filepath='../data/raw'):
     dataset_id = 'matthieulenozach/automobile-co2-emissions-eu-2021'
-    dataset_name = dataset_id.split('/')[-1]  # Get the dataset name
+    dataset_name = dataset_id.split('/')[-1]
 
-    # Save the original KAGGLE_CONFIG_DIR
-    original_kaggle_config_dir = os.environ.get('KAGGLE_CONFIG_DIR')
-    # Point KAGGLE_CONFIG_DIR to the directory containing kaggle.json
-    os.environ['KAGGLE_CONFIG_DIR'] = os.path.dirname(auth_file_path)
-
-    os.system(f'kaggle datasets download -d {dataset_id} -p {filepath}')
-
-    # Restore the original KAGGLE_CONFIG_DIR
-    if original_kaggle_config_dir is not None:
-        os.environ['KAGGLE_CONFIG_DIR'] = original_kaggle_config_dir
+    if auth_file_path is None:   
+        os.system(f'kaggle datasets download -d {dataset_id} -p {filepath}')
     else:
-        del os.environ['KAGGLE_CONFIG_DIR']
+        # Save the original KAGGLE_CONFIG_DIR
+        original_kaggle_config_dir = os.environ.get('KAGGLE_CONFIG_DIR')
+        # Point KAGGLE_CONFIG_DIR to the directory containing kaggle.json
+        os.environ['KAGGLE_CONFIG_DIR'] = os.path.dirname(auth_file_path)
+
+        os.system(f'kaggle datasets download -d {dataset_id} -p {filepath}')
+        # Restore the original KAGGLE_CONFIG_DIR
+        os.environ['KAGGLE_CONFIG_DIR'] = original_kaggle_config_dir
     return dataset_name
 
+# def download_co2_data(auth_file_path, filepath='../data/raw'):
+#     dataset_id = 'matthieulenozach/automobile-co2-emissions-eu-2021'
+#     dataset_name = dataset_id.split('/')[-1]  # Get the dataset name
+
+#     # Save the original KAGGLE_CONFIG_DIR
+#     original_kaggle_config_dir = os.environ.get('KAGGLE_CONFIG_DIR')
+#     # Point KAGGLE_CONFIG_DIR to the directory containing kaggle.json
+#     os.environ['KAGGLE_CONFIG_DIR'] = os.path.dirname(auth_file_path)
+#     os.system(f'kaggle datasets download -d {dataset_id} -p {filepath}')
+
+#     # Restore the original KAGGLE_CONFIG_DIR
+#     if original_kaggle_config_dir is not None:
+#         os.environ['KAGGLE_CONFIG_DIR'] = original_kaggle_config_dir
+#     else:
+#         del os.environ['KAGGLE_CONFIG_DIR']
+#     return dataset_name
+
+
+# Fonction non modifiee
 def load_co2_data(dataset_name="automobile-co2-emissions-eu-2021", filepath='../data/raw'):
+    # read zip file and extract in {filepath}
     with zipfile.ZipFile(f'{filepath}/{dataset_name}.zip', 'r') as zip_ref:
         zip_ref.extractall(filepath)
     filename = zip_ref.namelist()[0] 
     data = pd.read_csv(f'{filepath}/{filename}', low_memory=False)
     return data
 
-def download_and_load_co2_data(auth_file_path, filepath='../data/raw'):
+# Fonction Modifiée
+def download_and_load_co2_data( auth_file_path=None, filepath='../data/raw'):
     dataset_name = download_co2_data(auth_file_path, filepath)
     data = load_co2_data(dataset_name, filepath)
     return data
 
+# def download_and_load_co2_data(auth_file_path, filepath='../data/raw'):
+#     dataset_name = download_co2_data(auth_file_path, filepath)
+#     data = load_co2_data(dataset_name, filepath)
+#     return data
+
+########### Fin de modification #############################################
+
+ 
 ########## End of fetching data from Kaggle ##########
 
 
