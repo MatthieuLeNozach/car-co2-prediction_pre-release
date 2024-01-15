@@ -228,8 +228,9 @@ def ml_preprocess(df, countries=None,
     df = drop_irrelevant_columns(df)
     df = remove_columns(df, axlewidth=rem_axlewidth, engine_capacity=rem_engine_capacity, fuel_consumption=rem_fuel_consumption)  
     df = standardize_innovtech(df)
-    df = drop_residual_incomplete_rows(df)
     df = df['ElectricRange'].fillna(0)
+    df = drop_residual_incomplete_rows(df)
+
 
     rows_t1 = len(df)
     print(f"TOTAL NUMBER OF ROWS DROPPED:{rows_t0 - rows_t1}")

@@ -5,3 +5,4 @@ data/processed
 output/interpretability
 temp
 temp.ipynb
+notebooks/auto_co2/__pycache__
