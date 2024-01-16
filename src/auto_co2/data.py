@@ -281,11 +281,10 @@ def dummify_all_categoricals(df, dummy_columns=None, should_discretize_electricr
         dummy_columns = ['Pool', 'FuelType']
         if should_discretize_electricrange:
             df = discretize_electricrange(df, to_dummies=True) 
-    else:
-        df = dummify(df, dummy_columns)
         
     for column in dummy_columns:
         df = dummify(df, column)
+        
     return df
     
 ########## End of Feature Engineering ##########

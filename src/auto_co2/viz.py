@@ -21,12 +21,53 @@ import scipy.stats as stats
 from scipy.stats import gaussian_kde
 from sklearn.metrics import confusion_matrix, roc_curve, auc
 from sklearn.preprocessing import label_binarize, scale
+from dask_ml.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import StandardScaler
+import dask.array as da
+import dask.dataframe as dd
 
 from auto_co2.styles import generate_styles
 
 
 
 ########## Plotly Tools ##########
+
+def show_if_interactive(fig, interactive):
+    if interactive:
+        fig.show()
+        
+
+
+def sample_data_if_needed(data, sample):
+    if sample is not None:
+        return sample_data(data, sample)
+    return data
+
+
+def sample_data(data, n):
+    if isinstance(n, float):
+        n = int(n * len(data))
+    if isinstance(data, pd.DataFrame) or isinstance(data, pd.Series):
+        return data.sample(n, random_state=42)
+    elif isinstance(data, np.ndarray):
+        np.random.seed(42)
+        if len(data.shape) == 1:
+            return np.random.choice(data, size=n, replace=False)
+        elif len(data.shape) == 2:
+            indices = np.random.choice(data.shape[0], size=n, replace=False)
+            return data[indices]
+    else:
+        raise TypeError("Invalid data type. Must be a pandas DataFrame, Series, or a numpy array.")
+
+
+def save_if_needed(fig, save, format=None):
+    if save:
+        if format is None:
+            save_plotly_fig(fig, 'png')
+        else:
+            save_plotly_fig(fig, format)
+        
+
 
 def save_plotly_fig(fig, format='png'):
     """
@@ -103,8 +144,8 @@ def co2_emissions_viz(countrie, save=True, format='png'): # Plotly Express
     fig = px.bar(per_co2, x='Country', y='Co2EmissionsWltp', color='Co2EmissionsWltp', color_continuous_scale='Blues')
     fig.update_layout(title={'text': "Quel pays achète les véhicules les plus polluants? (CO2)",'x': 0.3})
     fig.show()
-    if save:
-        save_plotly_fig(fig, format)
+    save_if_needed(fig, save, format)
+
         
 
 def engine_power_viz(countries, save=True, format='png'): # Plotly Express
@@ -112,8 +153,8 @@ def engine_power_viz(countries, save=True, format='png'): # Plotly Express
     fig = px.bar(per_engine, x='Country', y='EnginePower', color='EnginePower', color_continuous_scale='Greens')
     fig.update_layout(title={'text': "Quel pays achète les véhicules les plus puissants? (KWh)",'x': 0.3})
     fig.show()
-    if save:
-        save_plotly_fig(fig, format)
+    save_if_needed(fig, save, format)
+
         
 
 def mass_viz(countries, save=True, format='png'): # Plotly Express
@@ -121,8 +162,8 @@ def mass_viz(countries, save=True, format='png'): # Plotly Express
     fig = px.bar(per_mass, x='Country', y='MassRunningOrder', color='MassRunningOrder', color_continuous_scale='Reds')
     fig.update_layout(title={'text': "Quel pays achète les véhicules les plus lourds? (Kg)",'x': 0.3})
     fig.show()
-    if save:
-        save_plotly_fig(fig, format)
+    save_if_needed(fig, save, format)
+
         
 
 def countrywise_viz(countries, save=True, format='png'): # Plotly Express
@@ -152,8 +193,8 @@ def plot_popular_fueltype(manufacturers, save=True, format='png'):
     fig = go.Figure(data=traces, layout=layout)
     fig.show()
 
-    if save:
-        save_plotly_fig(fig, format)
+    save_if_needed(fig, save, format)
+
 
 
 
@@ -166,7 +207,7 @@ def plot_popular_fueltype(manufacturers, save=True, format='png'):
 
 ######### Context visualization #########
 
-def plot_registrations_per_month(df:pd.DataFrame, save=True, format='png'):
+def plot_registrations_per_month(df:pd.DataFrame, interactive=True, save=True, format='png'):
     mois = ['Janvier', 'Février', 'Mars', 'Avril', 
                         'Mai', 'Juin', 'Juil.', 'Août', 
                         'Sept.', 'Oct.', 'Nov.', 'Déc.']
@@ -193,11 +234,8 @@ def plot_registrations_per_month(df:pd.DataFrame, save=True, format='png'):
         yaxis_title="Nombre d'immatriculations",
         showlegend=False
     )
-    fig.update_xaxes(ticktext=mois, tickvals=list(range(1, 13)))
-    if save:
-        save_plotly_fig(fig, format)
-
-    fig.show()
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
 
 ########## End context visualization ##########
 
@@ -250,14 +288,8 @@ def plot_fueltype_distribution(df:pd.DataFrame, interactive=True, save=True, for
         ]
     )
     
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format='png')
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
 
 
 
@@ -306,14 +338,8 @@ def plot_correlation_heatmap(df:pd.DataFrame, title='', interactive=True, save=T
         xaxis=dict(autorange='reversed', tickfont=dict(size=14)),
         yaxis=dict(tickfont=dict(size=14)))
 
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format='png')
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
 
 
 
@@ -337,14 +363,8 @@ def plot_qqplots(df:pd.DataFrame, title='', interactive=True, save=True, format=
     # Update layout
     fig.update_layout(height=1000, width=800, title_text=f"Quantiles observés vs quantiles d'une distribution normale (QQ Plots) {title}")
 
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format='png')
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
 
 
 
@@ -359,16 +379,10 @@ def plot_feature_distributions(df, title='', interactive=True, save=True, format
         fig.add_trace(go.Histogram(x=df[col_name], nbinsx=40, name=col_name), row=row, col=col)
         fig.update_xaxes(title_text=col_name, row=row, col=col)  # Add x-axis label
 
-    fig.update_layout(height=1000, width=1100, title_text=f"Distribution des variables explicatives {title}", showlegend=False)  # Add top-level title and remove legend
+    fig.update_layout(height=1000, width=1100, title_text=f"Distribution des variables explicatives {title}", showlegend=False)  
 
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format='png')
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
         
         
 def plot_distribution_pie(target, title='', interactive=True, save=True, format='png'):
@@ -383,14 +397,8 @@ def plot_distribution_pie(target, title='', interactive=True, save=True, format=
         title_x=0.5
     )
 
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format=format)
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
         
         
         
@@ -434,15 +442,8 @@ def plot_continuous_distribution(s, title='', interactive=True, save=True, forma
     fig.data[1].marker.line.color = "black"
     fig.data[1].opacity = 0.5
 
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format=format)
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)
-        
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
         
 ######### End of case specific visualization #########
 
@@ -493,73 +494,110 @@ def plot_confusion_matrix(y_true, y_pred,
         xaxis=dict(title='Labels prédits', tickfont=dict(size=14)),
         yaxis=dict(title='Vrais labels', tickfont=dict(size=14)))
 
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format=format)
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
         
 
 
-def plot_regression_diagnostics(y_test, pred_test, y_train, title, interactive=True, save=True, format='png'):
-    fig = make_subplots(rows=2, cols=2, subplot_titles=("Valeurs réelles VS valeurs prédites (test)",
-                                                       "Répartition des résidus (test)",
-                                                       "Distribution des résidus (test)",
-                                                       "Diagramme Quantile-Quantile"))
 
-    # Actual vs Predicted values
-    residuals = pred_test - y_test
-    fig.add_trace(go.Scatter(x=y_test, y=pred_test, mode='markers', marker=dict(color='#2E8B57', size=5, opacity=0.5)), row=1, col=1)
-    fig.add_trace(go.Scatter(x=[min(y_test), max(y_test)], y=[min(y_test), max(y_test)], mode='lines', line=dict(color='red')), row=1, col=1)
 
-    # Residuals Distribution
-    fig.add_trace(go.Scatter(x=y_test, y=residuals, mode='markers', marker=dict(color='#980a10', size=5, opacity=0.1)), row=1, col=2)
-    fig.add_trace(go.Scatter(x=[min(y_test), max(y_test)], y=[0, 0], mode='lines', line=dict(color='#0a5798')), row=1, col=2)
+def plot_actual_vs_predicted(y_true, y_pred, interactive=False, save=True, sample=None):
+    y_true = sample_data_if_needed(y_true, sample)
+    y_pred = sample_data_if_needed(y_pred, sample)
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=y_true, y=y_pred, mode='markers', marker=dict(color='#2E8B57', size=5, opacity=0.5)))
+    fig.add_trace(go.Scatter(x=[min(y_true), max(y_true)], y=[min(y_true), max(y_true)], mode='lines', line=dict(color='red')))
+    fig.update_layout(title='Actual vs Predicted')
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, 'png')
+    return fig
 
-    # Histogramme des résidus
-    fig.add_trace(go.Histogram(x=residuals, nbinsx=40), row=2, col=1)
+def plot_residuals_distribution(residuals, interactive=False, save=True, sample=None):
+    residuals = sample_data_if_needed(residuals, sample)
+    
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(x=residuals, nbinsx=40))
+    fig.update_layout(title='Residuals Distribution')
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, 'png')
+    return fig
 
-    # Q-Q plot
+def plot_qq_plot(residuals, interactive=False, save=True, sample=None):
+    residuals = sample_data_if_needed(residuals, sample)
+    
+    fig = go.Figure()
     residuals_norm = scale(residuals)
     (osm, osr), (slope, intercept, r) = stats.probplot(residuals_norm, dist='norm', fit=True)
-    fig.add_trace(go.Scatter(x=osm, y=osr, mode='markers'), row=2, col=2)
-    fig.add_trace(go.Scatter(x=osm, y=slope*osm + intercept, mode='lines'), row=2, col=2)
+    fig.add_trace(go.Scatter(x=osm, y=osr, mode='markers'))
+    fig.add_trace(go.Scatter(x=osm, y=slope*osm + intercept, mode='lines'))
+    fig.update_layout(title='QQ Plot')
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, 'png')
+    return fig
 
-    fig.update_layout(height=1000, width=1300, showlegend=False, title_text=title, title_x=0.5, title_font=dict(size=24))
+
+def plot_regression_diagnostics(y_true, y_pred, residuals, title, interactive=True, save=True, format='png', sample=None):
+    y_true = sample_data_if_needed(y_true, sample)
+    y_pred = sample_data_if_needed(y_pred, sample)
+    residuals = sample_data_if_needed(residuals, sample)
+
+    fig = make_subplots(rows=2, cols=2, subplot_titles=("Actual vs Predicted",
+                                                       "Residuals Distribution",
+                                                       "Residuals Histogram",
+                                                       "QQ Plot"))
+
+    # Actual vs Predicted values
+    fig1 = plot_actual_vs_predicted(y_true, y_pred, interactive=False, save=False)
+    fig.add_trace(fig1.data[0], row=1, col=1)
+    fig.add_trace(fig1.data[1], row=1, col=1)
+
+    # Residuals Distribution
+    fig2 = plot_residuals_distribution(residuals, interactive=False, save=False)
+    fig.add_trace(fig2.data[0], row=1, col=2)
+
+    # Residuals Histogram
+    fig3 = plot_residuals_distribution(residuals, interactive=False, save=False)
+    fig.add_trace(fig3.data[0], row=2, col=1)
+
+    # QQ Plot
+    fig4 = plot_qq_plot(residuals, interactive=False, save=False)
+    fig.add_trace(fig4.data[0], row=2, col=2)
+    fig.add_trace(fig4.data[1], row=2, col=2)
+
+    fig.update_layout(height=700, width=900, title_text=title)
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save)
+
+
+
+
+
+
+
+
+
+
+
     
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format=format)
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)
         
         
-def plot_lr_elasticnet(lr_en, title='', interactive=True, save=True, format='png'):
+def plot_lr_elasticnet(lr_en, title='', interactive=True, save=True, format='png', sample=None):
     alphas = lr_en.alphas_
 
     fig = go.Figure()
     for i in range(lr_en.mse_path_.shape[0]):
-        fig.add_trace(go.Scatter(x=alphas, y=lr_en.mse_path_[i,:,:].mean(axis=1), mode='lines', name='Moyenne pour l1_ratio= %.2f' %lr_en.l1_ratio[i]))
+        mse_path_sample = sample_data_if_needed(lr_en.mse_path_[i,:,:], sample)
+        fig.add_trace(go.Scatter(x=alphas, y=mse_path_sample.mean(axis=1), mode='lines', name='Moyenne pour l1_ratio= %.2f' %lr_en.l1_ratio[i]))
 
     fig.update_layout(title='Mean squared error pour chaque lambda'+title, xaxis_title='Alpha', yaxis_title='Mean squared error')
 
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format=format)
-        display(Image(img_bytes))
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
+    
+    
         
-    if save:
-        save_plotly_fig(fig, format)
-        
-        
-def plot_mse_folds(lr_en, l1_ratios):
+def plot_mse_folds(lr_en, l1_ratios, interactive=True, save=True, format='png'):
     # Define a color for each fold number
     colors = ['red', 'green', 'blue', 'orange', 'purple']
 
@@ -586,10 +624,11 @@ def plot_mse_folds(lr_en, l1_ratios):
 
     # Update y-axes to have the same scale
     fig.update_yaxes(matches='y')
-    fig.update_layout(height=300*n_rows, width=600*n_cols, title_text="Mean square error on each fold")
+    fig.update_layout(height=300*n_rows, width=600*n_cols, title_text="Mean squared error pour chaque lambda")
     fig.update_xaxes(title_text='Alphas')
-    fig.show()
-                
+    
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
 
 
 def plot_pca_variance(pca, n_features,  title='', interactive=True, save=True, format='png'):
@@ -607,14 +646,8 @@ def plot_pca_variance(pca, n_features,  title='', interactive=True, save=True, f
     fig.update_layout(height=700, width=1000)
 
 
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format=format)
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
         
         
         
@@ -627,14 +660,9 @@ def plot_xgboost(results, metric='mlogloss', title='', interactive=True, save=Tr
         fig.add_trace(go.Scatter(x=x_axis, y=results[key][metric], mode='lines', name=key))
 
     fig.update_layout(title='XGBoost'+title, xaxis_title='Epoch', yaxis_title=metric)
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format=format)
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)    
+
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)   
     
 
 def plot_roc_curves(y_test, y_pred, title='', interactive=True, save=True, format='png'):
@@ -668,15 +696,8 @@ def plot_roc_curves(y_test, y_pred, title='', interactive=True, save=True, forma
     fig.update_layout(title='Courbes ROC: '+title, xaxis_title='False Positive Rate', yaxis_title='True Positive Rate', autosize=False, width=600, height=600, margin=dict(l=50, r=50, b=100, t=100, pad=4))
     fig.update_layout(height=700, width=1000)
 
-    # Show or save the Figure
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format=format)
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
         
         
 
@@ -693,14 +714,8 @@ def plot_feature_importance(model, max_num_features=20, title='', interactive=Tr
     fig.update_layout(title='Feature Importance'+title, yaxis_title='Features', xaxis_title='Importance')
     fig.update_layout(height=700, width=1000)
 
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format=format)
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
         
         
         
@@ -720,51 +735,41 @@ def plot_training_history(training_history, title='', interactive=True, save=Tru
 
     fig.update_layout(height=600, width=600, title_text="Model Accuracy and Loss" + title)
 
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format=format)
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
         
         
 
-def plot_shap_summary(shap_explanation, feature_names, max_num_features=20, title='', interactive=True, save=True, format='png'):
-    # Get SHAP values from the explanation object
+def plot_shap_summary(shap_explanation, feature_names, max_num_features=20, title='', interactive=True, save=True, format='png', sample=None):
     shap_values = shap_explanation.values
+
+    shap_values = sample_data_if_needed(shap_values, sample)
 
     # Calculate the mean absolute SHAP values for each feature
     mean_abs_shap_values = np.mean(np.abs(shap_values), axis=0)
 
-    # Create a dictionary of feature names and mean absolute SHAP values
     importance = dict(zip(feature_names, mean_abs_shap_values))
-
-    # Sort features according to importance
     sorted_importance = dict(sorted(importance.items(), key=lambda item: item[1], reverse=False))
 
     # Limit the number of features
     limited_importance = dict(list(sorted_importance.items())[:max_num_features])
 
-    # Create a bar chart
     fig = go.Figure()
     for key in limited_importance.keys():
         fig.add_trace(go.Bar(y=[key], x=[limited_importance[key]], orientation='h', name=key))
 
     fig.update_layout(title='SHAP Summary'+title, yaxis_title='Features', xaxis_title='Importance')
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format=format)
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)
+
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
         
         
         
-def plot_shap_dependence(feature, interaction_feature, shap_values, X, title='', interactive=True, save=True, format='png'):
+def plot_shap_dependence(feature, interaction_feature, shap_values, X, title='', interactive=True, save=True, format='png', sample=None):
+    # Sample the data if needed
+    shap_values = sample_data_if_needed(shap_values, sample)
+    X = sample_data_if_needed(X, sample)
+
     # Get the SHAP values and feature values for the specified features
     shap_values_feature = shap_values[:, X.columns.get_loc(feature)]
     feature_values = X[feature].values
@@ -802,11 +807,5 @@ def plot_shap_dependence(feature, interaction_feature, shap_values, X, title='',
         yaxis_title='SHAP values',
         showlegend=True)
 
-    if interactive:
-        fig.show()
-    else:
-        img_bytes = pio.to_image(fig, format=format)
-        display(Image(img_bytes))
-        
-    if save:
-        save_plotly_fig(fig, format)
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)

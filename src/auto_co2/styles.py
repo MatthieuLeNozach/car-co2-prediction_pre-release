@@ -139,7 +139,7 @@ def display_feature_importances(model, data, title=None):
     
 def display_regression_report(actual_values, predicted_values, set_name):
     mean_squared_err = mean_squared_error(actual_values, predicted_values)
-    root_mean_squared_err = np.sqrt(mean_squared_err)
+    root_mean_squared_err = np.sqrt(mean_squared_err)  # Corrected
     mean_absolute_err = mean_absolute_error(actual_values, predicted_values)
     r2_scoring = r2_score(actual_values, predicted_values)
     
@@ -160,3 +160,6 @@ def display_combined_report(y_train, y_pred_train, y_test, y_pred_test, title=No
 
     # Display the combined report
     displayer(combined_report, n=len(combined_report), styles=styles, title=title)
+    
+    
+    
