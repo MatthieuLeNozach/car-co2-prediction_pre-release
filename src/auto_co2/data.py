@@ -113,7 +113,7 @@ def rename_columns(df):
         ]
     
     name_dict = dict(zip(abbrev_list, nom_colonne_list))
-    df.rename(name_dict, axis=1, inplace=True)
+    df = df.rename(columns = name_dict, axis=1)
     return df
 
 def select_countries(df, countries:list):
@@ -260,8 +260,9 @@ def ml_preprocess(df, countries=None,
     df = drop_irrelevant_columns(df)
     df = remove_columns(df, axlewidth=rem_axlewidth, engine_capacity=rem_engine_capacity, fuel_consumption=rem_fuel_consumption)  
     df = standardize_innovtech(df)
+    df = df[df['ElectricRange']].fillna(0)
     df = drop_residual_incomplete_rows(df)
-    df = df['ElectricRange'].fillna(0)
+ 
 
     rows_t1 = len(df)
     print(f"TOTAL NUMBER OF ROWS DROPPED:{rows_t0 - rows_t1}")
