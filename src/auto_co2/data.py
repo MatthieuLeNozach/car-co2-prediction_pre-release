@@ -113,7 +113,7 @@ def rename_columns(df):
         ]
     
     name_dict = dict(zip(abbrev_list, nom_colonne_list))
-    df = df.rename(columns = name_dict, axis=1)
+    df = df.rename(columns = name_dict)
     return df
 
 def select_countries(df, countries:list):
