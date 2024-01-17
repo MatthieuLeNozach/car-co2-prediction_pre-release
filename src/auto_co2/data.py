@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import zipfile
 import datetime
-import datetime
 from xgboost import XGBClassifier, XGBRegressor
 import kaggle
 import pickle
@@ -260,7 +259,7 @@ def ml_preprocess(df, countries=None,
     df = drop_irrelevant_columns(df)
     df = remove_columns(df, axlewidth=rem_axlewidth, engine_capacity=rem_engine_capacity, fuel_consumption=rem_fuel_consumption)  
     df = standardize_innovtech(df)
-    df = df[df['ElectricRange']].fillna(0)
+    df['ElectricRange'].fillna(0, inplace=True)
     df = drop_residual_incomplete_rows(df)
  
 
@@ -285,22 +284,17 @@ def discretize_co2(df):
     return df    
 
 
-def discretize_electricrange(df, to_dummies=False):
+def discretize_electricrange(df):
     bins = [-float('inf'),0,50,100,150,300]
     labels = ['NO_RANGE', '0to50', '50to100', '100to150', '150+']
     df['ElectricRange'] = pd.cut(df['ElectricRange'], bins=bins, labels=labels)
-
-    if to_dummies:
-        df = df.join(pd.get_dummies(data=df['ElectricRange'], dtype=int, prefix='ElecRange'))
-        df.drop('ElectricRange', axis=1, inplace=True)
-
     return df
 
 
 def get_classification_data(df):
-        df = discretize_co2(df)
-        df = df.drop(columns=['Co2EmissionsWltp'])
-        return df
+    df = discretize_co2(df)
+    df = df.drop(columns=['Co2EmissionsWltp'])
+    return df
 
 
 
@@ -310,17 +304,15 @@ def dummify(df, column):
     df.drop(columns=[column], inplace=True)
     return df
 
-def dummify_all_categoricals(df, dummy_columns=None, should_discretize_electricrange=False):
+def dummify_all_categoricals(df, dummy_columns=None, should_discretize_electricrange=True):
     if dummy_columns is None:
-        dummy_columns = ['Pool', 'FuelType']
-        if should_discretize_electricrange:
-            df = discretize_electricrange(df, to_dummies=True) 
+        df= pd.get_dummies(data = df)
     else:
-        df = dummify(df, dummy_columns)
-        
-    for column in dummy_columns:
-        df = dummify(df, column)
+        for column in dummy_columns:
+            df = dummify(df, column)
     return df
+
+# Fonction dummify inutile ?
     
 ########## End of Feature Engineering ##########
 
@@ -349,7 +341,7 @@ def save_processed_data(df, classification=False, pickle=True):
 
 def save_model(model, model_type='other'):
     model_name = type(model).__name__
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     filepath = '../models'
     filename = f"{model_name}_{timestamp}"
     os.makedirs(filepath, exist_ok=True)
@@ -374,7 +366,7 @@ def save_model(model, model_type='other'):
     
 def save_shap_values(shap_values, shap_sample):
     filename_prefix = type(shap_values).__name__
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     filepath = '../output/interpretability'
     filename_shap = f"{filename_prefix}_shap_values_{timestamp}.csv"
     filename_explainer = f"{filename_prefix}_explainer_{timestamp}.csv"

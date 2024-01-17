@@ -5,4 +5,7 @@ data/processed
 output/interpretability
 temp
 temp.ipynb
-notebooks/auto_co2/__pycache__
+output
+
+# Pas utile a suivre
+src/auto_co2/__pycache__

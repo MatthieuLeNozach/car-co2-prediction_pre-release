@@ -20,6 +20,10 @@ import scipy.stats as stats
 from sklearn.metrics import confusion_matrix, roc_curve, auc
 from sklearn.preprocessing import label_binarize, scale
 
+import sys
+sys.path.append("../src/")
+import auto_co2 as co2
+
 from auto_co2.styles import generate_styles
 
 
