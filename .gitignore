@@ -1,7 +1,10 @@
 # Datasets volumineux
 models
-data/raw
+
+data/raw/*
+!data/raw/automobile-co2-emissions-eu-2021.zip
 data/processed
+
 output/interpretability
 temp
 temp.ipynbnotebooks/regression_fr-de_2021.ipynb
