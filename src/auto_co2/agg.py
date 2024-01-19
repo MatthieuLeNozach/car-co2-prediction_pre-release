@@ -198,7 +198,13 @@ class ManufacturerDataAggregator:
         fig = add_legend(fig)
         fig.show()
         
-
+    def facetplot(self):
+        average_df = self.data.reset_index()
+        average_df = average_df.dropna(subset=['FuelConsumption'])  # Drop rows with NaN 'FuelConsumption'
+        fig = px.scatter(average_df, x="EnginePower", y="Co2EmissionsWltp", size="FuelConsumption", color='Make', facet_col='Pool', hover_data=['Make'])
+        for annotation in fig.layout.annotations:
+            annotation.text = annotation.text.split('=')[1]
+        fig.show()
 
 class CarDataAggregator:
     def __init__(self, df:pd.DataFrame):
@@ -303,6 +309,15 @@ class CarDataAggregator:
         self.plot_polar_charts(top_3_count, "Meilleures ventes 2021")
         self.plot_polar_charts(top_3_co2, "Voitures les plus polluantes")
         self.plot_polar_charts(bottom_3_co2, "Voitures les moins polluantes")
+        
+    def facetplot(self):
+        average_df = self.data.reset_index()
+        average_df = average_df.dropna(subset=['FuelConsumption'])  # Drop rows with NaN 'FuelConsumption'
+        fig = px.scatter(average_df, x="EnginePower", y="Co2EmissionsWltp", size="CarCount", color='Make', 
+                         facet_col='Pool', facet_col_wrap=4, hover_data=['Make', 'CommercialName'])
+        for annotation in fig.layout.annotations:
+            annotation.text = annotation.text.split('=')[1]
+        fig.show()
         
 ########### End of classes ##########
 

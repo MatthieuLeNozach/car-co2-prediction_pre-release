@@ -1,4 +1,4 @@
-from IPython.display import Image
+from IPython.display import Image, display
 import numpy as np
 import pandas as pd
 
@@ -12,6 +12,7 @@ import colorlover as cl
 
 import re
 import os
+import tempfile
 import json
 import datetime
 from itertools import cycle
@@ -19,12 +20,8 @@ from itertools import cycle
 import math
 import scipy.stats as stats
 from scipy.stats import gaussian_kde
-from sklearn.metrics import confusion_matrix, roc_curve, auc
 from sklearn.preprocessing import label_binarize, scale
-from dask_ml.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
-import dask.array as da
-import dask.dataframe as dd
 
 from auto_co2.styles import generate_styles
 
@@ -35,6 +32,10 @@ from auto_co2.styles import generate_styles
 def show_if_interactive(fig, interactive):
     if interactive:
         fig.show()
+    else:
+        with tempfile.NamedTemporaryFile(suffix='.png') as temp:
+            fig.write_image(temp.name)
+            display(Image(filename=temp.name))
         
 
 
@@ -89,10 +90,13 @@ def save_plotly_fig(fig, format='png'):
 
     if format == 'html':
         fig.write_html(f"../output/figures/{filename}.html")
+        print(f"Saved interactive figure to output/figures/{filename}.html")
     elif format == 'png':
         fig.write_image(f"../output/figures/{filename}.png")
+        print(f"Saved static figure to output/figures/{filename}.png")
     elif format == 'json':
         fig.write_json(f"../output/figures/{filename}.json")  
+        print(f"Saved JSON interactive figure to output/figures/{filename}.json")
 
 
 
@@ -369,33 +373,22 @@ def plot_qqplots(df:pd.DataFrame, title='', interactive=True, save=True, format=
 
 
 def plot_feature_distributions(df, title='', interactive=True, save=True, format='png'):
-    fig = sp.make_subplots(rows=3, cols=3)
     df_num = df.select_dtypes(include=[np.number])
     cols = [col for col in df_num.columns]  # Only keep numeric columns
 
+    # Calculate the number of rows and columns for the subplot grid
+    n_cols = 3
+    n_rows = -(-len(cols) // n_cols)  # Ceiling division
+
+    fig = sp.make_subplots(rows=n_rows, cols=n_cols)
+
     for i, col_name in enumerate(cols):
-        row = i // 3 + 1
-        col = i % 3 + 1
+        row = i // n_cols + 1
+        col = i % n_cols + 1
         fig.add_trace(go.Histogram(x=df[col_name], nbinsx=40, name=col_name), row=row, col=col)
         fig.update_xaxes(title_text=col_name, row=row, col=col)  # Add x-axis label
 
     fig.update_layout(height=1000, width=1100, title_text=f"Distribution des variables explicatives {title}", showlegend=False)  
-
-    show_if_interactive(fig, interactive)
-    save_if_needed(fig, save, format)
-        
-        
-def plot_distribution_pie(target, title='', interactive=True, save=True, format='png'):
-    counts = pd.Series(target).value_counts()
-
-    fig = go.Figure(data=[go.Pie(labels=counts.index, values=counts.values, hole=.3, textinfo="label+percent")])
-
-    fig.update_layout(
-        autosize=False,
-        margin=dict(t=50, b=50, l=50, r=50),
-        title_text=f"Répartition des classes {title}",
-        title_x=0.5
-    )
 
     show_if_interactive(fig, interactive)
     save_if_needed(fig, save, format)

@@ -1,3 +1,4 @@
+from IPython.display import display, HTML
 import numpy as np
 import pandas as pd
 import os
@@ -27,6 +28,7 @@ def generate_styles(header_color='steelblue', odd_row_color='aliceblue', even_ro
 
 ########## Table Tools ##########
 def displayer(df, n=5, styles=None, title=None, save=True):  # Added title parameter
+    print("Save:", save)
     if styles is None:
         styles = generate_styles()
     
@@ -112,6 +114,7 @@ def save_styled_df(styled_df, name=None):
     html = styled_df.to_html()
     with open(f"../output/tables/{filename}.html", "w", encoding='utf-8') as f:  # 'utf-8' pour afficher les accents
         f.write(html)
+    print(f"Saved {name} styled DataFrame to output/tables")
 ########## End of table tools ##########
 
 

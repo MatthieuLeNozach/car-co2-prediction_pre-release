@@ -1,0 +1,23 @@
+.git
+.gitignore
+
+
+# But not these directories (don't ignore)
+!/models
+!/data/raw
+!/data/processed
+!/output/interpretability
+!/temp
+!/temp.ipynb
+#!/notebooks/regression_fr-de_2021.ipynb
+#!/notebooks/gfredz.ipynb
+
+# Ignore everything inside the directories (ignore)
+/models/*
+/data/raw/*
+/data/processed/*
+/output/interpretability/*
+/temp/*
+/temp.ipynb/*
+#/notebooks/regression_fr-de_2021.ipynb/*
+/notebooks/gfredz.ipynb/*

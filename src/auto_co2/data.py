@@ -1,4 +1,6 @@
 import os
+import time
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import zipfile
@@ -9,11 +11,57 @@ import pickle
 from tensorflow.keras.models import Model
 
 
+########## Constants ##########
+COL_NAMES_SHORTFORM = [
+        'ID', 'Country', 'VFN', 'Mp', 'Mh', 'Man', 'MMS', 'Tan', 'T', 'Va', 'Ve', 'Mk',
+        'Cn', 'Ct', 'Cr', 'r', 'm (kg)', 'Mt', 'Enedc (g/km)', 'Ewltp (g/km)', 'W (mm)',
+        'At1 (mm)', 'At2 (mm)', 'Ft', 'Fm', 'ec (cm3)', 'ep (KW)', 'z (Wh/km)', 'IT',
+        'Ernedc (g/km)', 'Erwltp (g/km)', 'De', 'Vf', 'Status', 'year', 'Date of registration',
+        'Fuel consumption ', 'Electric range (km)'
+        ]
 
-########## Fetching data from Kaggle ##########
+COL_NAMES_LONGFORM = [ # Official column names from EEA's' website
+        'ID', 'Country', 'VehicleFamilyIdentification', 'Pool', 'ManufacturerName', 'ManufNameOem',
+        'ManufNameMS', 'TypeApprovalNumber', 'Type', 'Variant', 'Version', 'Make', 'CommercialName',
+        'VehicleCategory', 'CategoryOf', 'TotalNewRegistrations', 'MassRunningOrder',
+        'WltpTestMass', 'Co2EmissionsNedc', 'Co2EmissionsWltp',
+        'BaseWheel', 'AxleWidthSteering', 'AxleWidthOther', 'FuelType', 'FuelMode',
+        'EngineCapacity', 'EnginePower', 'ElectricConsumption',
+        'InnovativeTechnology', 'InnovativeEmissionsReduction',
+        'InnovativeEmissionsReductionWltp', 'DeviationFactor', 'VerificationFactor',
+        'Status', 'RegistrationYear', 'RegistrationDate', 'FuelConsumption', 'ElectricRange'
+        ]
+
+
+########## End of Constants ##########
+
+
+
+########## Security tools ##########
+
+def secure_path(filepath):
+    root = Path('../')
+    absolute_filepath = Path(filepath).resolve()
+    
+    if root not in absolute_filepath.parents:
+        raise ValueError(f"Path {filepath} is not within the repository root, please save the file within the repository boundaries and try again.")
+
+
+########## End of security tools ##########
+
+
+
+
+########## Fetching raw data from Kaggle ##########
+
 def download_co2_data(auth_file_path, filepath='../data/raw'):
     dataset_id = 'matthieulenozach/automobile-co2-emissions-eu-2021'
     dataset_name = dataset_id.split('/')[-1]  # Get the dataset name
+    zipfile_path = os.path.join(filepath, f"{dataset_name}.zip")
+    
+    if os.path.isfile(zipfile_path):
+        print(f"File {zipfile_path} already exists.")
+        return zipfile_path
 
     # Save the original KAGGLE_CONFIG_DIR
     original_kaggle_config_dir = os.environ.get('KAGGLE_CONFIG_DIR')
@@ -27,24 +75,114 @@ def download_co2_data(auth_file_path, filepath='../data/raw'):
         os.environ['KAGGLE_CONFIG_DIR'] = original_kaggle_config_dir
     else:
         del os.environ['KAGGLE_CONFIG_DIR']
-    return dataset_name
+
+    print(f"{zipfile_path} has been downloaded successfully.")
+    return zipfile_path
+
 
 def load_co2_data(dataset_name="automobile-co2-emissions-eu-2021", filepath='../data/raw'):
-    with zipfile.ZipFile(f'{filepath}/{dataset_name}.zip', 'r') as zip_ref:
-        zip_ref.extractall(filepath)
-    filename = zip_ref.namelist()[0] 
-    data = pd.read_csv(f'{filepath}/{filename}', low_memory=False)
-    return data
+    zip_filename = f"{dataset_name}.zip"
+    csv_filename = "auto_co2_eur_21_raw.csv"
+    csv_file_path = os.path.join(filepath, csv_filename)
+    zip_file_path = os.path.join(filepath, zip_filename)
+
+    if os.path.isfile(csv_file_path):
+        data = pd.read_csv(csv_file_path, low_memory=False)
+        return data
+    elif os.path.isfile(zip_file_path):
+        with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+            zip_ref.extractall(filepath)
+        if os.path.isfile(csv_file_path):
+            data = pd.read_csv(csv_file_path, low_memory=False)
+            return data
+        else:
+            print(f"Error: The CSV file ({csv_file_path}) was not extracted from the ZIP file.")
+            return None
+    else:
+        print(f"Error: Neither the CSV file ({csv_file_path}) nor the ZIP file ({zip_file_path}) exists.")
+        return None
+
 
 def download_and_load_co2_data(auth_file_path, filepath='../data/raw'):
     dataset_name = download_co2_data(auth_file_path, filepath)
     data = load_co2_data(dataset_name, filepath)
     return data
 
-########## End of fetching data from Kaggle ##########
+########## End of fetching raw data from Kaggle  ##########
+
+
+
+
+########## Loading processed data ##########
+ 
+def load_processed_helper(classification=False, filepath='../data/processed', filename=None):
+    if filename is None:
+        if classification:
+            filepath = os.path.join(filepath, 'classification')
+            filename = 'co2_classification'
+        else:
+            filepath = os.path.join(filepath, 'regression')
+            filename = 'co2_regression'
+    else:
+        if classification:
+            filepath = os.path.join(filepath, 'classification')
+        else:
+            filepath = os.path.join(filepath, 'regression')
+    return filepath, filename
+
+def load_latest_file(filepath, filename, extension): # for country names or other specificities separated by '_' before the extension
+    files = os.listdir(filepath)
+    files = [file for file in files if file.endswith(extension)]
+    files.sort(key=lambda x: os.path.getmtime(os.path.join(filepath, x)), reverse=True)
+    latest_file = files[0]
+    return os.path.join(filepath, latest_file)
+
+
+def separate_target_if_needed(data, separate_Xy=True, classification=False):
+    if separate_Xy:        
+        if classification:
+            X = data.drop(columns=['Co2Grade'])
+            y = data['Co2Grade']
+            return X, y
+        else:
+            X = data.drop(columns=['Co2EmissionsWltp'])
+            y = data['Co2EmissionsWltp']
+            return X, y
+    else:
+        return data
+
+
+def load_processed_csv(classification=False, filepath='../data/processed',  chosen_file=None, filename=None, separate_Xy=True):
+    filepath, filename = load_processed_helper(classification, filepath, filename)
+    filepath = secure_path(filepath)
+    if chosen_file is None:
+        latest_file = load_latest_file(filepath, filename, '.csv')
+    else:
+        latest_file = os.path.join(filepath, chosen_file)
+    data = pd.read_csv(latest_file)
+    return separate_target_if_needed(data, separate_Xy, classification)
+    
+    
+
+def load_processed_pickle(classification=False, filepath='../data/processed', chosen_file=None, filename=None, separate_Xy=True):
+    filepath, filename = load_processed_helper(classification, filepath, filename)
+    filepath = secure_path(filepath)
+    if chosen_file is None:
+        latest_file = load_latest_file(filepath, filename, '.pkl')
+    else:
+        latest_file = os.path.join(filepath, filename)
+    data = pd.read_pickle(latest_file)
+    return separate_target_if_needed(data, separate_Xy, classification)
+    
+
+
+########## End of loading processed data ##########
+
+
 
 
 ########## General data cleaning ##########
+
 def convert_dtypes(df):
     floats = df.select_dtypes(include=['float']).columns
     df.loc[:, floats] = df.loc[:, floats].astype('float32')
@@ -58,58 +196,47 @@ def convert_dtypes(df):
     return df
 
 
-def rename_columns(df):
-    abbrev_list = [
-        'ID', 'Country', 'VFN', 'Mp', 'Mh', 'Man', 'MMS', 'Tan', 'T', 'Va', 'Ve', 'Mk',
-        'Cn', 'Ct', 'Cr', 'r', 'm (kg)', 'Mt', 'Enedc (g/km)', 'Ewltp (g/km)', 'W (mm)',
-        'At1 (mm)', 'At2 (mm)', 'Ft', 'Fm', 'ec (cm3)', 'ep (KW)', 'z (Wh/km)', 'IT',
-        'Ernedc (g/km)', 'Erwltp (g/km)', 'De', 'Vf', 'Status', 'year', 'Date of registration',
-        'Fuel consumption ', 'Electric range (km)'
-        ]
-
-    nom_colonne_list = [
-        'ID', 'Country', 'VehicleFamilyIdentification', 'Pool', 'ManufacturerName', 'ManufNameOem',
-        'ManufNameMS', 'TypeApprovalNumber', 'Type', 'Variant', 'Version', 'Make', 'CommercialName',
-        'VehicleCategory', 'CategoryOf', 'TotalNewRegistrations', 'MassRunningOrder',
-        'WltpTestMass', 'Co2EmissionsNedc', 'Co2EmissionsWltp',
-        'BaseWheel', 'AxleWidthSteering', 'AxleWidthOther', 'FuelType', 'FuelMode',
-        'EngineCapacity', 'EnginePower', 'ElectricConsumption',
-        'InnovativeTechnology', 'InnovativeEmissionsReduction',
-        'InnovativeEmissionsReductionWltp', 'DeviationFactor', 'VerificationFactor',
-        'Status', 'RegistrationYear', 'RegistrationDate', 'FuelConsumption', 'ElectricRange'
-        ]
-    
-    name_dict = dict(zip(abbrev_list, nom_colonne_list))
+def rename_columns(df, old_names=COL_NAMES_SHORTFORM, new_names=COL_NAMES_LONGFORM):
+    name_dict = {}
+    if set(old_names).issubset(df.columns): # If either some or all of the short names are in the dataframe...
+        name_dict = dict(zip(old_names, new_names)) # Maps concerned short names to long names
     df.rename(name_dict, axis=1, inplace=True)
     return df
+
 
 def select_countries(df, countries:list):
     return df[df['Country'].isin(countries)]
 
 
 def drop_irrelevant_columns(df):
-    to_drop = [
+    drop_list = [
             'VehicleFamilyIdentification', 'ManufNameMS', 'TypeApprovalNumber', 
             'Type', 'Variant', 'Version', 'VehicleCategory',
            'TotalNewRegistrations', 'Co2EmissionsNedc', 'AxleWidthOther', 'Status',
            'InnovativeEmissionsReduction', 'DeviationFactor', 'VerificationFactor', 'Status',
            'RegistrationYear']
     
-    df = df.drop(columns=[col for col in to_drop if col in df.columns])
-    return df
+    to_drop = [col for col in drop_list if col in df.columns]
+    new_df = df.drop(columns=to_drop)
+    
+    dropped_cols = df.columns.difference(new_df.columns)
+    col_names_mapping = dict(zip(COL_NAMES_LONGFORM, COL_NAMES_SHORTFORM))
+    _ = [print(f"Irrelevant column dropped: {col} ({col_names_mapping.get(col, col)})") for col in to_drop]
+    print() 
+    return new_df
 
 def conditional_column_update(df, condition_column, condition_value, target_column, target_value):
     df.loc[df[condition_column] == condition_value, target_column] = target_value
     return df
 
 def clean_manufacturer_columns(df): # VIZ
-    df = conditional_column_update(df, 'Make', 'TESLA', 'Pool', 'TESLA')
+    df = conditional_column_update(df, 'Make', 'TESLA', 'Pool', 'TESLA') # Pool names cleaning ...
     df = conditional_column_update(df, 'Make', 'HONDA', 'Pool', 'HONDA-GROUP')
     df = conditional_column_update(df, 'Make', 'JAGUAR', 'Pool', 'TATA-MOTORS')
     df = conditional_column_update(df, 'Make', 'LAND ROVER', 'Pool', 'TATA-MOTORS')
     df = conditional_column_update(df, 'Make', 'RANGE-ROVER', 'Pool', 'TATA-MOTORS')
 
-    df['Make'] = df['Make'].str.upper()
+    df['Make'] = df['Make'].str.upper() # Make names cleaning ...
     df = conditional_column_update(df, 'Make', 'B M W', 'Make', 'BMW')
     df = conditional_column_update(df, 'Make', 'BMW I', 'Make', 'BMW')
     df = conditional_column_update(df, 'Make', 'ROLLS ROYCE I', 'Make', 'ROLLS-ROYCE')
@@ -133,9 +260,12 @@ def correct_fueltype(df): # VIZ
 
     # ***** High Level Function: PRE CLEANING ***** #
 def data_preprocess(df, countries=None):
+    print("Selecting countries...")
     if countries is not None:
         df = select_countries(df, countries)
+    print("Converting dtypes (int/float 64 >> 32, object >> category)...")
     df = convert_dtypes(df)
+    print("Setting column names to longform...")
     df = rename_columns(df)
     return df
     # ***** End of High Level Function: PRE CLEANING ***** #
@@ -173,10 +303,16 @@ def remove_columns(df, columns=None, axlewidth=True, engine_capacity=True, fuel_
         columns_to_drop.append('FuelConsumption')
         
     if columns is None:
-        df = df.drop(columns=[col for col in columns_to_drop if col in df.columns])
+        new_df = df.drop(columns=[col for col in columns_to_drop if col in df.columns])
     else:
-        df = df.drop(columns=[col for col in columns if col in df.columns])
-    return df
+        new_df = df.drop(columns=[col for col in columns if col in df.columns])
+        
+    col_names_mapping = dict(zip(COL_NAMES_LONGFORM, COL_NAMES_SHORTFORM))
+    dropped_cols = df.columns.difference(new_df.columns)
+    _ = [print(f"Column dropped: {col} ({col_names_mapping.get(col, col)})") for col in columns_to_drop]
+    print()
+    
+    return new_df
 
 
 def remove_fueltype(df, keep_fossil=False):
@@ -219,20 +355,39 @@ def drop_residual_incomplete_rows(df):
 def ml_preprocess(df, countries=None, 
                      rem_fuel_consumption=True, 
                      rem_axlewidth=True, 
-                     rem_engine_capacity=True):
+                     rem_engine_capacity=True,
+                     electricrange_nantozero=True):
     
     rows_t0 = len(df)
     
-    df = data_preprocess(df, countries)
-    df = drop_irrelevant_columns(df)
-    df = remove_columns(df, axlewidth=rem_axlewidth, engine_capacity=rem_engine_capacity, fuel_consumption=rem_fuel_consumption)  
-    df = standardize_innovtech(df)
-    df = drop_residual_incomplete_rows(df)
-
-    rows_t1 = len(df)
-    print(f"TOTAL NUMBER OF ROWS DROPPED:{rows_t0 - rows_t1}")
+    df_new = data_preprocess(df, countries)
     
-    return df
+    print("Removing redundant, useless, empty columns...")
+    df_new = drop_irrelevant_columns(df_new)
+    
+    print("Removing some other columns...")
+    df_new = remove_columns(df_new, axlewidth=rem_axlewidth, 
+                            engine_capacity=rem_engine_capacity, 
+                            fuel_consumption=rem_fuel_consumption)  
+    
+    print("binarizing InnovativeTechnology...")
+    df_new = standardize_innovtech(df_new)
+    
+    print("Setting ElectricRange missing values to 0...")
+    if electricrange_nantozero:
+        df_new.loc[df_new['ElectricRange'].isna(), 'ElectricRange'] = 0
+    
+    print("Dropping rows with incomplete data if under 5%...")   
+    df_new = drop_residual_incomplete_rows(df_new)
+
+    rows_t1 = len(df_new)
+    print(f"TOTAL NUMBER OF ROWS DROPPED:{rows_t0 - rows_t1}\n")
+    print(f"FINAL NUMBER OF ROWS:{rows_t1}\n")
+    print(f"TOTAL NUMBER OF COLUMNS DROPPED:{df.columns.difference(df_new.columns).shape[0]}\n")
+    print(f"FINAL NUMBER OF COLUMNS:{len(df_new.columns)}\n")
+    
+    
+    return df_new
 # ***** end of High Level Function: ML CLEANING ***** #
 
 ########## End of ML Preprocessing ##########
@@ -294,20 +449,37 @@ def dummify_all_categoricals(df, dummy_columns=None, should_discretize_electricr
 ########## Persistence ##########
 
 
-def save_processed_data(df, classification=False, pickle=True):
-    filepath = '../data/processed'
-    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    os.makedirs(filepath, exist_ok=True)
+def save_processed_data(df, filepath=None, country_names=None, classification=False, pickle=True):
+    if filepath is None:
+        filepath = '../data/processed'
     if classification:
-        filename = f'co2_classification_{timestamp}'
+        filepath = os.path.join(filepath, 'classification')
+        filename = 'co2_classification'
+    else:
+        filepath = os.path.join(filepath, 'regression')
+        filename = 'co2_regression'
+    
+    os.makedirs(filepath, exist_ok=True)
+
+    # append a number to the filename if a file with the same name already exists
+    counter = 1
+    while os.path.exists(os.path.join(
+        filepath, f"{filename}_{country_names if country_names else ''}{counter if counter > 1 else ''}.pkl" if pickle\
+            else f"{filename}_{country_names if country_names else ''}{counter if counter > 1 else ''}.csv")):
+        counter +=1
+
+    if classification:
         df = get_classification_data(df)
-    else:
-        filename = f'co2_regression_{timestamp}'
+
     if pickle:
-        df.to_pickle(f"{filepath}/{filename.split('.')[0]}.pkl")
+        df.to_pickle(
+            os.path.join(filepath, f"{filename}_{country_names if country_names else ''}{counter if counter > 1 else ''}.pkl"))
     else:
-        df.to_csv(f'{filepath}/{filename}.csv', index=False)
-    print(f"Data saved to {filepath}/{filename}")
+        df.to_csv(
+            os.path.join(filepath, f"{filename}_{country_names if country_names else ''}{counter if counter > 1 else ''}.csv"), index=False)
+
+    saved_path = os.path.join(filepath, f"{filename}_{country_names if country_names else ''}{counter if counter > 1 else ''}")
+    print(f"Data saved to {saved_path}")
 
 
 
