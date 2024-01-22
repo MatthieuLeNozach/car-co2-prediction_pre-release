@@ -20,16 +20,19 @@ from itertools import cycle
 import math
 import scipy.stats as stats
 from scipy.stats import gaussian_kde
-from sklearn.preprocessing import label_binarize, scale
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import label_binarize, scale, StandardScaler
+from sklearn.metrics import confusion_matrix, accuracy_score, roc_curve, auc
 
 from auto_co2.styles import generate_styles
+import numpy as np
 
 
 
 ########## Plotly Tools ##########
 
 def show_if_interactive(fig, interactive):
+    """Displays the Plotly figure interactively if interactive=True, 
+    otherwise saves it to a temp PNG file and displays that."""
     if interactive:
         fig.show()
     else:
@@ -40,12 +43,38 @@ def show_if_interactive(fig, interactive):
 
 
 def sample_data_if_needed(data, sample):
+    """
+    If sample is provided, returns a random sample of the data. 
+    Otherwise returns the full data.
+    
+    Parameters:
+    - data (DataFrame, Series, ndarray): The data to sample from
+    - sample (int, float): If int, number of samples to return. If float, fraction of data to return.
+    
+    Returns:
+    - DataFrame, Series, ndarray: Sampled data
+    """
     if sample is not None:
         return sample_data(data, sample)
     return data
 
 
 def sample_data(data, n):
+    """
+    Randomly samples data to the given size n. 
+    
+    If n is an int, samples n elements. 
+    If n is a float, samples n * len(data) elements.
+    
+    Maintains pandas DataFrame/Series structure and numpy array structure.
+    
+    Parameters:
+    - data (DataFrame, Series, ndarray): Data to sample from
+    - n (int, float): Sample size
+    
+    Returns:
+    Sampled data with same structure as input data 
+    """
     if isinstance(n, float):
         n = int(n * len(data))
     if isinstance(data, pd.DataFrame) or isinstance(data, pd.Series):
@@ -62,6 +91,16 @@ def sample_data(data, n):
 
 
 def save_if_needed(fig, save, format=None):
+    """Saves the figure to file if save is True.
+    
+    The figure is saved in the output/figures directory.
+    
+    Args:
+        fig: The plotly figure to save 
+        save (bool): If True, saves the figure
+        format (str): The file format to save as. Valid options are 'png', 
+            'html', and 'json'. Default 'png'.
+    """
     if save:
         if format is None:
             save_plotly_fig(fig, 'png')
@@ -72,10 +111,12 @@ def save_if_needed(fig, save, format=None):
 
 def save_plotly_fig(fig, format='png'):
     """
-    Sauvegarde la figure figée au format PNG (Défaut) 
-    ou la figue interactive (HTML)  
-    ou la figure au fomat JSON
-    dans le dossier output/figures
+    Saves a Plotly figure to file in the specified format.
+    
+    Args:
+        fig: The Plotly figure to save
+        format (str): The file format to save as. Valid options are 
+            'png', 'html', and 'json'. Default 'png'.
     """
     valid_formats = ['html', 'png', 'json']
     if format not in valid_formats:
@@ -102,8 +143,13 @@ def save_plotly_fig(fig, format='png'):
 
 def load_plotly_json(filename):
     """
-    Charghe la figure Plotly depuis un JSON
-    Retourne un plotly.graph_objs._figure.Figure
+    Loads a Plotly figure that was previously saved as a JSON file.
+    
+    Args:
+        filename: The name of the JSON file containing the figure.
+    
+    Returns:
+        A Plotly figure loaded from the provided JSON file.
     """
 
     output_dir = "../output/figures/"
@@ -115,6 +161,17 @@ def load_plotly_json(filename):
 
 
 def add_legend(fig, text="Data Source: European Environment Agency, 2021"):
+    """
+    Adds a legend annotation to a Plotly figure.
+    
+    Args:
+        fig (go.Figure): The Plotly figure to add the legend to.
+        text (str, optional): The text for the legend. Defaults to 
+            "Data Source: European Environment Agency, 2021".
+    
+    Returns:
+        go.Figure: The updated figure with the added legend.
+    """
     fig.update_layout(
         annotations=[
             dict(
@@ -132,6 +189,16 @@ def add_legend(fig, text="Data Source: European Environment Agency, 2021"):
     return fig
 
 def increase_font_size(fig, font_size=24):
+    """Increase font size of text in Plotly figure.
+    
+    Args:
+        fig (go.Figure): The Plotly figure 
+        font_size (int): The font size to set for figure title.
+                         Default is 24.
+                         
+    Returns:
+        go.Figure: Updated figure with increased font size.
+    """
     fig.update_layout(
         height=400, 
         width=1200, 
@@ -181,7 +248,15 @@ def countrywise_viz(countries, save=True, format='png'): # Plotly Express
 
 ########## Manufacturerwise visualization #########
 def plot_popular_fueltype(manufacturers, save=True, format='png'):
-    # Group by Pool and Make and sum the Counts for each group
+    """
+    plot_popular_fueltype visualizes the distribution of fuel types by car make/manufacturer using a stacked bar chart.
+    
+    It groups the input DataFrame by Pool and Make columns, sums the Counts, 
+    creates traces for each Make, assigns colors, and plots a stacked bar chart 
+    with Make on the x-axis, sum of Counts on the y-axis, and fuel Pool split by color.
+    
+    The figure is displayed and can be saved to file optionally.
+    """
     grouped_df = manufacturers.data.groupby(['Pool', 'Make'])['Count'].sum().reset_index(name='Counts')
 
     # Create a list of traces
@@ -212,6 +287,16 @@ def plot_popular_fueltype(manufacturers, save=True, format='png'):
 ######### Context visualization #########
 
 def plot_registrations_per_month(df:pd.DataFrame, interactive=True, save=True, format='png'):
+    """
+    plot_registrations_per_month visualizes the number of car registrations per month in a bar chart.
+    
+    It takes a DataFrame df as input, converts the RegistrationDate column to datetime, 
+    extracts the month, groups by month and counts the rows to get the registration count per month.
+    
+    It then plots this as a bar chart with the month on the x-axis and the registration count on the y-axis.
+    
+    The figure can be displayed interactively and/or saved to a file.
+    """
     mois = ['Janvier', 'Février', 'Mars', 'Avril', 
                         'Mai', 'Juin', 'Juil.', 'Août', 
                         'Sept.', 'Oct.', 'Nov.', 'Déc.']
@@ -251,16 +336,22 @@ def plot_registrations_per_month(df:pd.DataFrame, interactive=True, save=True, f
 ######### Case spectific visualization #########
 
 def plot_fueltype_distribution(df:pd.DataFrame, interactive=True, save=True, format='png'):
-    """Affiche les boites à moustaches des émissions de CO2 par FuelType
-
-    Args:
-        df (DataFrame): _description_
-        interactive (bool, optional): True par défaut, False pour de meilleures performances.
-
-    Returns:
-        _type_: plolty multi-boxplot figure
     """
-
+    Plot boxplots of CO2 emissions by fuel type.
+    
+    This function takes a DataFrame as input and generates a multi-boxplot 
+    figure with one box per fuel type, showing the distribution of CO2
+    emissions for that fuel type.
+    
+    Args:
+        df (DataFrame): DataFrame containing FuelType and Co2EmissionsWltp columns
+        interactive (bool): If True, show figure interactively. Default True.
+        save (bool): If True, save figure to file. Default True. 
+        format (str): File format if saving. Default 'png'.
+    
+    Returns:
+        plotly.graph_objects.Figure: The generated multi-boxplot figure.
+    """
     fig = go.Figure()
     for fuel_type in df['FuelType'].unique():
         fig.add_trace(go.Box(
@@ -300,16 +391,24 @@ def plot_fueltype_distribution(df:pd.DataFrame, interactive=True, save=True, for
 
 
 def plot_correlation_heatmap(df:pd.DataFrame, title='', interactive=True, save=True, format='png'):
-    """Heatmap de corrélation des variables quantitatives
-
-    Args:
-        df (pd.DataFrame): Colonnes numériques uniquement
-        interactive (bool, optional): True par défaut, False pour de meilleures performances.
-
-    Returns:
-        _type_: plotly heatmap figure
     """
-
+    Generates a heatmap visualization of the correlation matrix for numeric columns in a DataFrame.
+    
+    This function calculates the correlation matrix for the numeric columns in the input 
+    DataFrame, then visualizes it as a heatmap using Plotly. Useful for exploring correlations
+    between variables.
+    
+    Args:
+      df (pd.DataFrame): DataFrame containing only numeric columns to correlate.
+      title (str): Optional title for the plot.
+      interactive (bool): If True, show the plot interactively.
+      save (bool): If True, save the plot to a file.
+      format (str): File format if saving, e.g. 'png'.
+    
+    Returns:
+      plotly.graph_objects.Figure: The Plotly figure object for the correlation heatmap.
+    
+    """
     df = df.select_dtypes(include=[np.number])
     correlation_matrix = df.corr()
     heatmap = go.Heatmap(z=correlation_matrix, 
@@ -348,6 +447,23 @@ def plot_correlation_heatmap(df:pd.DataFrame, title='', interactive=True, save=T
 
 
 def plot_qqplots(df:pd.DataFrame, title='', interactive=True, save=True, format='png'):
+    """
+    Plot QQ plots for numeric columns in a DataFrame.
+    
+    This function samples the DataFrame, calculates theoretical and sample quantiles for
+    numeric columns, and creates a Plotly figure with QQ plots comparing them. Useful for 
+    visually checking if the data matches a normal distribution.
+    
+    Args:
+      df (pd.DataFrame): DataFrame containing numeric columns to plot.
+      title (str): Plot title.
+      interactive (bool): If True, show plot interactively.
+      save (bool): If True, save plot to file.
+      format (str): File format if saving, e.g. 'png'.
+    
+    Returns:
+      plotly.graph_objects.Figure: Plotly figure object with QQ plots.
+    """
     n_samples = min(10000, df.shape[0])  # Sample 10,000 or the total number of rows, whichever is smaller
     df_sample = df.select_dtypes(include=[np.number]).sample(n=n_samples, random_state=1)
 
@@ -373,6 +489,23 @@ def plot_qqplots(df:pd.DataFrame, title='', interactive=True, save=True, format=
 
 
 def plot_feature_distributions(df, title='', interactive=True, save=True, format='png'):
+    """
+    Plot histograms of numeric feature distributions.
+    
+    For each numeric column in the input DataFrame, calculate a histogram 
+    with 40 bins and add it as a subplot to a Plotly figure. Configure the
+    layout for the number of rows and columns needed to fit all histograms.
+    
+    Args:
+      df (DataFrame): Input DataFrame.
+      title (str): Plot title.
+      interactive (bool): If True, show plot interactively.
+      save (bool): If True, save plot to file.
+      format (str): File format if saving, e.g. 'png'.
+    
+    Returns:
+      plotly.graph_objects.Figure: Plotly figure with histograms.
+    """
     df_num = df.select_dtypes(include=[np.number])
     cols = [col for col in df_num.columns]  # Only keep numeric columns
 
@@ -396,6 +529,17 @@ def plot_feature_distributions(df, title='', interactive=True, save=True, format
         
         
 def plot_continuous_distribution(s, title='', interactive=True, save=True, format='png'):
+    """
+    Plot the kernel density estimate and histogram for a continuous variable.
+    
+    This function takes a pandas Series, calculates the kernel density estimate
+    using scipy.stats.gaussian_kde and plots it along with a histogram of the data.
+    It configures the plot layout including axis labels, titles, legend and 
+    transparency.
+    
+    The figure is displayed interactively if interactive=True, and saved to file
+    if save=True.
+    """
     # Calculate the Kernel Density Estimation of the series
     x = np.linspace(s.min(), s.max(), 1000)
     kde = gaussian_kde(s)
@@ -451,7 +595,25 @@ def plot_confusion_matrix(y_true, y_pred,
                           save=True,
                           format='png', 
                           title=''):
+    """
+    Plots a confusion matrix given true and predicted label vectors.
     
+    The confusion matrix shows the number of correct and incorrect predictions for each true label.
+    This gives a more detailed view of model performance than just accuracy.
+    
+    Args:
+    y_true: Array of true labels
+    y_pred: Array of predicted labels
+    palette: Color palette for heatmap
+    classes: List of class names to use on axes
+    interactive: If True, show figure interactively
+    save: If True, save figure to file
+    format: File format if saving figure
+    title: Title for figure
+    
+    Returns:
+    Figure object
+    """
     cm = confusion_matrix(y_true, y_pred)
     if classes is None:
         classes = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
@@ -495,6 +657,12 @@ def plot_confusion_matrix(y_true, y_pred,
 
 
 def plot_actual_vs_predicted(y_true, y_pred, interactive=False, save=True, sample=None):
+    """
+    Plot actual vs predicted values.
+    
+    Plots a scatter plot of actual vs predicted values. Also plots a diagonal 
+    reference line. Useful for inspecting over/under-prediction and bias.
+    """
     y_true = sample_data_if_needed(y_true, sample)
     y_pred = sample_data_if_needed(y_pred, sample)
     
@@ -508,6 +676,18 @@ def plot_actual_vs_predicted(y_true, y_pred, interactive=False, save=True, sampl
 
 def plot_residuals_distribution(residuals, interactive=False, save=True, sample=None):
     residuals = sample_data_if_needed(residuals, sample)
+    """
+    Plot a histogram of the residuals.
+    
+    Args:
+        residuals: Array of residual values from model predictions.
+        interactive: Whether to display plot interactively.
+        save: Whether to save plot to file.
+        sample: Optionally sample a subset of residuals.
+    
+    Returns:
+        Figure object containing the residuals histogram plot.
+    """
     
     fig = go.Figure()
     fig.add_trace(go.Histogram(x=residuals, nbinsx=40))
@@ -517,6 +697,22 @@ def plot_residuals_distribution(residuals, interactive=False, save=True, sample=
     return fig
 
 def plot_qq_plot(residuals, interactive=False, save=True, sample=None):
+    """
+    Plot a QQ plot for the residuals.
+    
+    A QQ plot is a graphical method to determine if a set of data likely comes from a normal distribution. 
+    The residuals are plotted against the quantiles of a normal distribution. If the residuals follow a normal distribution,
+    the points will approximately lie on the diagonal line. Deviations from the line indicate departures from normality.
+    
+    Args:
+      residuals: Array of residual values from model predictions.
+      interactive: Whether to display plot interactively.
+      save: Whether to save plot to file.
+      sample: Optionally sample a subset of residuals.
+      
+    Returns:
+      Figure object containing the QQ plot.
+    """
     residuals = sample_data_if_needed(residuals, sample)
     
     fig = go.Figure()
@@ -531,6 +727,28 @@ def plot_qq_plot(residuals, interactive=False, save=True, sample=None):
 
 
 def plot_regression_diagnostics(y_true, y_pred, residuals, title, interactive=True, save=True, format='png', sample=None):
+    """
+    Plot regression diagnostics.
+    
+    Plots 4 subplots:
+    1) Actual vs predicted values
+    2) Residuals distribution 
+    3) Histogram of residuals
+    4) QQ plot of residuals
+    
+    Args:
+      y_true: Array of true target values
+      y_pred: Array of predicted target values
+      residuals: Array of residual values
+      title: Plot title 
+      interactive: Whether to display plot interactively
+      save: Whether to save plot to file
+      format: File format if saving 
+      sample: Optionally sample a subset of the data
+      
+    Returns:
+      Figure object with regression diagnostic plots 
+    """
     y_true = sample_data_if_needed(y_true, sample)
     y_pred = sample_data_if_needed(y_pred, sample)
     residuals = sample_data_if_needed(residuals, sample)
@@ -563,19 +781,16 @@ def plot_regression_diagnostics(y_true, y_pred, residuals, title, interactive=Tr
     save_if_needed(fig, save)
 
 
-
-
-
-
-
-
-
-
-
     
         
         
 def plot_lr_elasticnet(lr_en, title='', interactive=True, save=True, format='png', sample=None):
+    """
+    Plot mean squared error vs alpha for elastic net model.
+    
+    Plots one line per fold showing MSE across alpha values. Also plots 
+    average MSE across folds. Indicates chosen alpha with vertical line.
+    """
     alphas = lr_en.alphas_
 
     fig = go.Figure()
@@ -591,6 +806,11 @@ def plot_lr_elasticnet(lr_en, title='', interactive=True, save=True, format='png
     
         
 def plot_mse_folds(lr_en, l1_ratios, interactive=True, save=True, format='png'):
+    """
+    Plot mean squared error vs alpha for elastic net model.
+    
+    For each l1_ratio, create subplots showing MSE across alpha values for each fold.
+    Also plot average MSE across folds. Indicate chosen alpha with vertical line."""
     # Define a color for each fold number
     colors = ['red', 'green', 'blue', 'orange', 'purple']
 
@@ -625,7 +845,16 @@ def plot_mse_folds(lr_en, l1_ratios, interactive=True, save=True, format='png'):
 
 
 def plot_pca_variance(pca, n_features,  title='', interactive=True, save=True, format='png'):
+    """
+    Plot the explained variance ratio of the principal components.
 
+    This function takes a PCA object and the number of features to plot. 
+    It generates a plot with two lines:
+    - Variance: Shows the explained variance ratio per principal component
+    - Cumulative Variance: Shows the cumulative explained variance ratio
+
+    It also updates the plot layout, including the titles and axis labels.
+    """
     x_values = list(range(1, n_features+1))
 
     # Create a scatter plot of the explained variance ratio
@@ -645,6 +874,24 @@ def plot_pca_variance(pca, n_features,  title='', interactive=True, save=True, f
         
         
 def plot_xgboost(results, metric='mlogloss', title='', interactive=True, save=True, format='png'):
+    """
+    Plot XGBoost results.
+    
+    This function takes the results dictionary from XGBoost training and plots
+    the given metric over epochs for each model in the results.
+    
+    Args:
+      results: Dictionary of model results from XGBoost, where keys are model
+              names and values are dictionaries of metrics over epochs.
+      metric: Metric to plot on y-axis, default is 'mlogloss'.
+      title: Plot title.
+      interactive: If True, show plot interactively.
+      save: If True, save plot to file.
+      format: File format if saving, default 'png'.
+    
+    Returns:
+      None.
+    """
     num_epochs = len(next(iter(results.values()))[metric])
     x_axis = list(range(0, num_epochs))
 
@@ -659,42 +906,74 @@ def plot_xgboost(results, metric='mlogloss', title='', interactive=True, save=Tr
     
 
 def plot_roc_curves(y_test, y_pred, title='', interactive=True, save=True, format='png'):
-    # Determine unique classes
-    classes = np.unique(y_test)
+        """
+        Plot ROC curves.
+        
+        For each class, compute the ROC curve and ROC area using sklearn's 
+        roc_curve and auc functions. Create a plotly figure with one trace per 
+        class, plus a diagonal reference line. Update the layout for titles, axes,
+        size. Show or save the figure based on input args.
+        
+        Args:
+            y_test: Array of truth labels.
+            y_pred: Array of predicted probabilities.
+            title: Plot title.
+            interactive: If True, show plot interactively.
+            save: If True, save plot.
+            format: File format if saving.
+            
+        Returns:
+            None.
+        """
+        # Determine unique classes
+        classes = np.unique(y_test)
 
-    # Binarize the output
-    y_test_bin = label_binarize(y_test, classes=classes)
-    n_classes = y_test_bin.shape[1]
+        # Binarize the output
+        y_test_bin = label_binarize(y_test, classes=classes)
+        n_classes = y_test_bin.shape[1]
 
-    # Compute ROC curve and ROC area for each class
-    fpr = dict()
-    tpr = dict()
-    roc_auc = dict()
-    for i in range(n_classes):
-        fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_pred[:, i])
-        roc_auc[i] = auc(fpr[i], tpr[i])
+        # Compute ROC curve and ROC area for each class
+        fpr, tpr, roc_auc = roc_curve(y_test_bin.ravel(), y_pred.ravel())
 
-    # Create a Figure
-    fig = go.Figure()
+        # Create a Figure
+        fig = go.Figure()
 
-    # Add ROC curves to the Figure
-    colors = cycle(['aqua', 'darkorange', 'cornflowerblue', 'green', 'red', 'blue', 'yellow'])
-    for i, color in zip(range(n_classes), colors):
-        fig.add_trace(go.Scatter(x=fpr[i], y=tpr[i], mode='lines', name='ROC curve of class {0} (area = {1:0.2f})'.format(i, roc_auc[i]), line=dict(color=color)))
+        # Add ROC curves to the Figure
+        colors = cycle(['aqua', 'darkorange', 'cornflowerblue', 'green', 'red', 'blue', 'yellow'])
+        for i, color in zip(range(n_classes), colors):
+                fig.add_trace(go.Scatter(x=fpr[i], y=tpr[i], mode='lines', name='ROC curve of class {0} (area = {1:0.2f})'.format(i, roc_auc[i]), line=dict(color=color)))
 
-    # Add diagonal line
-    fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Random', line=dict(color='black', dash='dash')))
+        # Add diagonal line
+        fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Random', line=dict(color='black', dash='dash')))
 
-    # Update layout
-    fig.update_layout(title='Courbes ROC: '+title, xaxis_title='False Positive Rate', yaxis_title='True Positive Rate', autosize=False, width=600, height=600, margin=dict(l=50, r=50, b=100, t=100, pad=4))
-    fig.update_layout(height=700, width=1000)
+        # Update layout
+        fig.update_layout(title='Courbes ROC: '+title, xaxis_title='False Positive Rate', yaxis_title='True Positive Rate', autosize=False, width=600, height=600, margin=dict(l=50, r=50, b=100, t=100, pad=4))
+        fig.update_layout(height=700, width=1000)
 
-    show_if_interactive(fig, interactive)
-    save_if_needed(fig, save, format)
+        show_if_interactive(fig, interactive)
+        save_if_needed(fig, save, format)
         
         
 
 def plot_feature_importance(model, max_num_features=20, title='', interactive=True, save=True, format='png'):
+    """
+    Plot feature importance.
+    
+    Plots a horizontal bar chart showing the importance of each feature in the model. 
+    The feature importances are extracted from the model and sorted. The max_num_features
+    argument limits the number of features plotted.
+    
+    Args:
+        model: The trained model. Must have a get_booster() method that returns feature importances.
+        max_num_features: The maximum number of features to plot.
+        title: The plot title. 
+        interactive: If True, show the plot interactively.
+        save: If True, save the plot.
+        format: The image format if saving the plot.
+        
+    Returns:
+        None.
+    """
     
     importance = model.get_booster().get_score(importance_type='weight')
     sorted_importance = dict(sorted(importance.items(), key=lambda item: item[1], reverse=False))
@@ -713,6 +992,23 @@ def plot_feature_importance(model, max_num_features=20, title='', interactive=Tr
         
         
 def plot_training_history(training_history, title='', interactive=True, save=True, format='png'):
+    """
+    Plot the training history.
+    
+    Plots the training and validation accuracy and loss from the training history 
+    of a Keras model over epochs. Useful for visualizing how well the model trained.
+    
+    Args:
+      training_history: The Keras training History object containing the history of
+                        metrics from training.
+      title: An optional title for the plot.
+      interactive: If True, show the plot interactively.
+      save: If True, save the plot.
+      format: The image format if saving the plot.
+      
+    Returns:
+      None.
+    """
     fig = make_subplots(rows=2, cols=1)
 
     fig.add_trace(go.Scatter(y=training_history.history['accuracy'], mode='lines', name='Train Accuracy'), row=1, col=1)
@@ -734,6 +1030,12 @@ def plot_training_history(training_history, title='', interactive=True, save=Tru
         
 
 def plot_shap_summary(shap_explanation, feature_names, max_num_features=20, title='', interactive=True, save=True, format='png', sample=None):
+    """Plot a summary of SHAP feature importance values.
+    
+    Calculates the mean absolute SHAP value per feature and plots a horizontal
+    bar chart showing the most important features. Useful for understanding which
+    features in the model have the most impact on predictions.
+    """
     shap_values = shap_explanation.values
 
     shap_values = sample_data_if_needed(shap_values, sample)
@@ -759,7 +1061,15 @@ def plot_shap_summary(shap_explanation, feature_names, max_num_features=20, titl
         
         
 def plot_shap_dependence(feature, interaction_feature, shap_values, X, title='', interactive=True, save=True, format='png', sample=None):
-    # Sample the data if needed
+    """
+    Plot the SHAP dependence between a feature and the SHAP values.
+    
+    Creates a 2D density plot showing the relationship between the given feature
+    values and the corresponding SHAP values. Also adds a scatter plot colored 
+    by the interaction feature values. Useful for understanding how the model
+    depends on the specified feature.
+    """
+    # Sample the data if needed, shap is computationally expensive
     shap_values = sample_data_if_needed(shap_values, sample)
     X = sample_data_if_needed(X, sample)
 
