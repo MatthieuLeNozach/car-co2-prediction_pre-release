@@ -1,18 +1,22 @@
 import os
 import sys
 sys.path.insert(0, '../src/')
+import datetime
+import time
 from pathlib import Path
-import sqlite3
-from sqlite3 import Error
+from prettytable import PrettyTable
 
 import numpy as np
 import pandas as pd
 
+from sklearn.linear_model import LinearRegression, ElasticNetCV
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, LabelEncoder
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from sklearn.metrics import mean_absolute_error, mean_squared_error, max_error, median_absolute_error, r2_score, explained_variance_score
 from sklearn.ensemble import RandomForestClassifier
+import xgboost as xgb
 
 import auto_co2 as co2
 
@@ -20,64 +24,239 @@ import auto_co2 as co2
 
 
 class MyDecisionTreeClassifier(DecisionTreeClassifier):
-    def __init__(self, criterion='entropy', 
-                 max_depth=20, min_samples_leaf=1, 
-                 random_state=None, max_leaf_nodes=None,
-                 min_impurity_decrease=0.0):
-        super().__init__(criterion=criterion, 
-                        max_depth=max_depth,
-                        min_samples_leaf=min_samples_leaf,
-                        random_state=random_state,
-                        max_leaf_nodes=max_leaf_nodes,
-                        min_impurity_decrease=min_impurity_decrease)
-        
-    def get_parameters(self, get_string_input, get_int_input):
-        params = {}
-        params['criterion'] = get_string_input("Enter criterion (default: 'gini'):", 'gini')
-        params['max_depth'] = get_int_input("Enter max depth (default: None):", None)
-        params['min_samples_leaf'] = get_int_input("Enter min samples leaf (default: 1):", 1)
-        params['max_leaf_nodes'] = get_int_input("Enter max leaf nodes (default: None):", None)
-        return params
-                     
-    def train_and_predict(self, X, y):
-        self.fit(X, y)
-        y_pred =  self.predict(X)
-        return y_pred
-    
+    DEFAULT_HYPERPARAMS = { # selection of hyperparameters for user prompt
+        'criterion': 'gini',
+        'max_depth': None,
+        'min_samples_leaf': 1,
+        'max_leaf_nodes': None,
+        'min_impurity_decrease': 0.0,
+        'class_weight': None
+    }    
+    def __init__(self, 
+                 criterion='gini', 
+                 splitter='best', 
+                 max_depth=None, 
+                 min_samples_split=2, 
+                 min_samples_leaf=1, 
+                 min_weight_fraction_leaf=0.0, 
+                 max_features=None, 
+                 random_state=None, 
+                 max_leaf_nodes=None, 
+                 min_impurity_decrease=0.0, 
+                 class_weight=None, 
+                 ccp_alpha=0.0):
+        super().__init__(
+            criterion=criterion, splitter=splitter, max_depth=max_depth, 
+            min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf, 
+            min_weight_fraction_leaf=min_weight_fraction_leaf, max_features=max_features, 
+            random_state=random_state, max_leaf_nodes=max_leaf_nodes, 
+            min_impurity_decrease=min_impurity_decrease, class_weight=class_weight, 
+            ccp_alpha=ccp_alpha
+            )
+            
+class MyRandomForestClassifier(RandomForestClassifier):
+    DEFAULT_HYPERPARAMS = {
+        'criterion': 'gini',
+        'max_depth': None,
+        'n_estimators': 100,
+        'max_features': 'sqrt', #int, float, None=n_features, log2, sqrt = log2(n_features) etc
+        'max_leaf_nodes': None,
+        'bootstrap': False,
+    } 
+    def __init__(self, 
+                 n_estimators=100, 
+                 criterion='gini', 
+                 max_depth=None, 
+                 min_samples_split=2, 
+                 min_samples_leaf=1, 
+                 min_weight_fraction_leaf=0.0, 
+                 max_features='auto', 
+                 max_leaf_nodes=None, 
+                 min_impurity_decrease=0.0, 
+                 bootstrap=True, 
+                 oob_score=False, 
+                 n_jobs=-1, 
+                 random_state=None, 
+                 verbose=2, 
+                 warm_start=False, 
+                 class_weight=None, 
+                 ccp_alpha=0.0, 
+                 max_samples=None):
+        super().__init__(
+            n_estimators=n_estimators, criterion=criterion, max_depth=max_depth, 
+            min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf, 
+            min_weight_fraction_leaf=min_weight_fraction_leaf, max_features=max_features, 
+            max_leaf_nodes=max_leaf_nodes, min_impurity_decrease=min_impurity_decrease, 
+            bootstrap=bootstrap, oob_score=oob_score, n_jobs=n_jobs, 
+            random_state=random_state, verbose=verbose, warm_start=warm_start, 
+            class_weight=class_weight, ccp_alpha=ccp_alpha, max_samples=max_samples
+            )
 
-        
-    def feature_importances(self, data):
-        co2.styles.display_feature_importances(self, data)
+class MyXGBoostClassifier(xgb.XGBClassifier):
+    DEFAULT_HYPERPARAMS = {
+        'learning_rate': 0.1,
+        'max_depth': 3,
+        'n_estimators': 100,
+        'gamma': 0,
+        'lambda': 1,
+        'objective': 'multi:softmax'
+        }
+    def __init__(self, 
+                 max_depth=3, 
+                 learning_rate=0.1, 
+                 n_estimators=100, 
+                 verbosity=1, 
+                 objective='binary:logistic', 
+                 booster='gbtree', 
+                 n_jobs=-1, 
+                 gamma=0, 
+                 min_child_weight=1, 
+                 max_delta_step=0, 
+                 subsample=1, 
+                 colsample_bytree=1, 
+                 colsample_bylevel=1, 
+                 colsample_bynode=1, 
+                 reg_alpha=0, 
+                 reg_lambda=1, 
+                 scale_pos_weight=1, 
+                 base_score=0.5, 
+                 random_state=0, 
+                 num_parallel_tree=1, 
+                 importance_type='gain', 
+                 eval_metric='logloss'):
+        super().__init__(
+            max_depth=max_depth, learning_rate=learning_rate, n_estimators=n_estimators, 
+            verbosity=verbosity, objective=objective, booster=booster, 
+            n_jobs=n_jobs, gamma=gamma, min_child_weight=min_child_weight, 
+            max_delta_step=max_delta_step, subsample=subsample, 
+            colsample_bytree=colsample_bytree, colsample_bylevel=colsample_bylevel, 
+            colsample_bynode=colsample_bynode, reg_alpha=reg_alpha, 
+            reg_lambda=reg_lambda, scale_pos_weight=scale_pos_weight, 
+            base_score=base_score, random_state=random_state, 
+            num_parallel_tree=num_parallel_tree, importance_type=importance_type, 
+            eval_metric=eval_metric
+        )
 
                  
-            
+class MyLinearRegression(LinearRegression):
+    DEFAULT_HYPERPARAMS = {
+        'fit_intercept': True,
+        'positive': False,
+        'copy_X': True,
+        'n_jobs': -1}
+    def __init__(self, 
+                 fit_intercept=True, 
+                 positive=False, 
+                 copy_X=True, 
+                 n_jobs=-1):
+        super().__init__(
+            fit_intercept=fit_intercept, positive=positive, 
+            copy_X=copy_X, n_jobs=n_jobs
+        )
+        
+class MyElasticNetCV(ElasticNetCV):
+    DEFAULT_HYPERPARAMS = {
+        'l1_ratio': 0.5,
+        'cv': 3,
+        'fit_intercept': True,
+        'max_iter': 1000,
+        'tol': 0.0001,
+        'eps': 0.001,
+        }
+    def __init__(self, 
+                 n_alphas=100, 
+                 l1_ratio=0.5, 
+                 eps=1e-3,
+                 fit_intercept=True,  
+                 precompute=False, 
+                 max_iter=1000, 
+                 copy_X=True, 
+                 tol=0.0001, 
+                 positive=False, 
+                 random_state=None, 
+                 selection='cyclic',
+                 cv=3,
+                 n_jobs=-1,
+                 verbose=1):
+        super().__init__(
+            n_alphas=n_alphas, eps=eps, l1_ratio=l1_ratio, fit_intercept=fit_intercept, 
+            precompute=precompute, max_iter=max_iter, copy_X=copy_X, tol=tol, n_jobs=n_jobs,
+            positive=positive, random_state=random_state, selection=selection,
+            verbose=verbose, cv=cv
+            )
+        
+        
+
+class MyXGBoostRegressor(xgb.XGBRegressor):
+    DEFAULT_HYPERPARAMS = {
+        'max_depth': 3,
+        'learning_rate': 0.1,
+        'n_estimators': 100,
+        'gamma': 0,
+        'reg_alpha': 0,
+        'reg_lambda': 1,
+        }
+
+    def __init__(self, 
+                 max_depth=3, 
+                 learning_rate=0.1, 
+                 n_estimators=100, 
+                 verbosity=2, 
+                 objective='reg:squarederror', 
+                 booster='gbtree', 
+                 n_jobs=-1, 
+                 gamma=0, 
+                 min_child_weight=1, 
+                 max_delta_step=0, 
+                 subsample=1, 
+                 colsample_bytree=1, 
+                 colsample_bylevel=1, 
+                 colsample_bynode=1, 
+                 reg_alpha=0, 
+                 reg_lambda=1, 
+                 scale_pos_weight=1, 
+                 base_score=0.5, 
+                 random_state=0, 
+                 num_parallel_tree=1, 
+                 importance_type='gain', 
+                 eval_metric='rmse'):
+        super().__init__(
+            max_depth=max_depth, learning_rate=learning_rate, n_estimators=n_estimators, 
+            verbosity=verbosity, objective=objective, booster=booster, 
+            n_jobs=n_jobs, gamma=gamma, min_child_weight=min_child_weight, 
+            max_delta_step=max_delta_step, subsample=subsample, 
+            colsample_bytree=colsample_bytree, colsample_bylevel=colsample_bylevel, 
+            colsample_bynode=colsample_bynode, reg_alpha=reg_alpha, 
+            reg_lambda=reg_lambda, scale_pos_weight=scale_pos_weight, 
+            base_score=base_score, random_state=random_state, 
+            num_parallel_tree=num_parallel_tree, importance_type=importance_type, 
+            eval_metric=eval_metric
+        )
+        
                  
 class MLToolBox:  
 
     @staticmethod
-    def load_data(filepath, separate_Xy=True, classification=False):
+    def load_data(filepath):
         if filepath.endswith('.csv'):
-            data = pd.read_csv(filepath)
+            df = pd.read_csv(filepath)
         elif filepath.endswith('.pkl'):
-            data = pd.read_pickle(filepath)
+            df = pd.read_pickle(filepath)
         else:
             raise ValueError("Unsupported file type. Please provide a .csv or .pkl file.")
-
-        print(data.info())
-
-        if separate_Xy:
-            return MLToolBox.separate_target(data, classification)
-        else:
-            return data
+        print(df.info())
+        return df
+        
 
     @staticmethod
-    def separate_target(data, classification):
+    def separate_target(df, classification):
         if classification:
-            X = data.drop(columns=['Co2Grade'])
-            y = data['Co2Grade']
+            X = df.drop(columns=['Co2Grade'])
+            y = df['Co2Grade']
         else:
-            X = data.drop(columns=['Co2EmissionsWltp'])
-            y = data['Co2EmissionsWltp']
+            X = df.drop(columns=['Co2EmissionsWltp'])
+            y = df['Co2EmissionsWltp']
+        print(f"Target info: shape = {y.shape}, values = {y.value_counts()}")
         return X, y
         
     
@@ -102,27 +281,32 @@ class MLToolBox:
         else:
             return scaler.fit_transform(X)
         
+    
     @staticmethod
     def prepare(dataset_path, test_size=0.2, random_state=None, feature_scaling=0, classification=False):
         # combines toolbox methods to prepare the dataset for training
-        X, y = MLToolBox.load_data(dataset_path, separate_Xy=True, classification=classification)
+        df = MLToolBox.load_data(dataset_path)
+        X, y  = MLToolBox.separate_target(df, classification=classification)
+        print(f"y shape: {y.shape}, type: {type(y)}")  # add this line
+        data_shape = X.shape
         print(f"Loaded {dataset_path}")
-            
-        X_train, X_test, y_train, y_test = MLToolBox.split_data(X, y, test_size=test_size, random_state=random_state)
-        print(f"Data has been split into train and test sets with a test size of {test_size}, random state: {random_state}")
         
         if feature_scaling == 1: # minmax normalisation
-            X_train = MLToolBox.minmax_scale(X_train)
-            X_test = MLToolBox.minmax_scale(X_test)
+            X = MLToolBox.minmax_scale(X)
             print("Data has been normalized")    
         elif feature_scaling == 2: #standardisation
-            X_train = MLToolBox.standard_scale(X_train)
-            X_test = MLToolBox.standard_scale(X_test)
+            X = MLToolBox.standard_scale(X)
             print("Data has been standardized")
         else:
             print("No feature scaling applied")
+            
+        X_train, X_test, y_train, y_test = MLToolBox.split_data(X, y, test_size=test_size, random_state=random_state)
+        print(f"Data has been split into train and test sets with a test size of {test_size}, random state: {random_state}")
+        print(f"y_train shape: {y_train.shape}, type: {type(y_train)}")  # add this line
 
-        return X_train, X_test, y_train, y_test
+
+
+        return X_train, X_test, y_train, y_test, data_shape
     
     
     @staticmethod
@@ -130,191 +314,156 @@ class MLToolBox:
         df = pd.DataFrame({'Actual': y_true, 'Predicted': y_pred})
         df.index.name = 'Row Index'
         return df.sample(10)
+    
+    
+    def regression_report(y_true, y_pred):
+        error = y_true - y_pred
+        percentil = [5,25,50,75,95]
+        percentil_value = np.percentile(error, percentil)
         
+        metrics = [
+            ('mean absolute error', mean_absolute_error(y_true, y_pred)),
+            ('median absolute error', median_absolute_error(y_true, y_pred)),
+            ('mean squared error', mean_squared_error(y_true, y_pred)),
+            ('max error', max_error(y_true, y_pred)),
+            ('r2 score', r2_score(y_true, y_pred)),
+            ('explained variance score', explained_variance_score(y_true, y_pred))
+            ]
+        
+        print('Metrics for regression:')
+        for metric_name, metric_value in metrics:
+            print(f'{metric_name:>25s}: {metric_value: >20.3f}')
+            
+        print('\nPercentiles:')
+        for p, pv in zip(percentil, percentil_value):
+            print(f'{p: 25d}: {pv:>20.3f}')
+    
+    
+    
+    @staticmethod
+    def get_info_dict(model, y_test, y_pred_test, dataset_name, data_shape, random_state, scaling_choice, test_size, t1, t2, t0, classification):
+        scaling_choices = {0: 'None', 1: 'MinMax', 2: 'Standard'} # turns the user input for scaling (int) back into its name
+        info = {
+            'problem_type': 'classification' if classification else 'regression',
+            'model_type': type(model).__name__,
+            'dataset_name': dataset_name,
+            'num_features': data_shape[1],
+            'num_rows': data_shape[0],
+            'date': datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'),  # Replace hyphens and colons with underscores            
+            'random_state': random_state,
+            'normalisation': scaling_choices[scaling_choice],
+            'test_size': test_size,
+            'training_time': t2 - t1,
+            'total_time': t2 - t0
+        }
+        # Get hyperparameters and add them to the info dictionary
+        hyperparameters = model.get_params()
+        hyperparameters.pop('random_state', None)
+        info.update(hyperparameters)
+
+        if classification:
+            report_test = classification_report(y_test, y_pred_test, zero_division=1, output_dict=True)
+            info['accuracy_or_r2'] = report_test['accuracy']
+            for label, metrics in report_test.items():
+                if isinstance(metrics, dict):
+                    info[f"{label}_precision"] = metrics['precision']
+                    info[f"{label}_recall"] = metrics['recall']
+                    info[f"{label}_f1_score"] = metrics['f1-score']
+                    info[f"{label}_support"] = metrics['support']
+                else:
+                    info[label] = metrics
+        else:
+            error = y_test - y_pred_test
+            percentil = [5,25,50,75,95]
+            percentil_value = np.percentile(error, percentil)
+            info['mae'] = mean_absolute_error(y_test, y_pred_test)
+            info['median_ae'] = median_absolute_error(y_test, y_pred_test)
+            info['rmse'] = mean_squared_error(y_test, y_pred_test, squared=False)
+            info['mse'] = mean_squared_error(y_test, y_pred_test)
+            info['max_error'] = max_error(y_test, y_pred_test)
+            info['accuracy_or_r2'] = r2_score(y_test, y_pred_test)
+            info['explained_var_score'] = explained_variance_score(y_test, y_pred_test)
+            for p, pv in zip(percentil, percentil_value):
+                info[f'p_{p}'] = pv
+
+        info = {k.replace(' ', '_'): v for k, v in info.items()}
+        
+
+        
+        return info
+        
+    @staticmethod
+    def model_pipeline(model_name, params, dataset_name, dataset_path, test_size, random_state, scaling_choice, classification):
+        xgb = False # to avoid error for refencing  before assignment
+        if model_name == 'DecisionTreeClassifier':
+            model = MyDecisionTreeClassifier()
+        elif model_name == 'RandomForestClassifier':
+            model = MyRandomForestClassifier()
+        elif model_name == 'XGBClassifier':
+            xgb = True
+            model = MyXGBoostClassifier()
+        elif model_name == 'LinearRegression':
+            model = MyLinearRegression()
+        elif model_name == 'ElasticNetCV':
+            model = MyElasticNetCV()
+        elif model_name == 'XGBRegressor':
+            xgb=True
+            model = MyXGBoostRegressor()
+        else:
+            raise ValueError("Unsupported model type. Please choose from: DecisionTreeClassifier, RandomForestClassifier, XGBClassifier, LinearRegression, ElasticNetCV, XGBRegressor")
+            
+        
+        t0 = time.time()
+        print("Starting the pipeline...")
+
+        X_train, X_test, y_train, y_test, data_shape = MLToolBox.prepare(
+            dataset_path=dataset_path, test_size=test_size, random_state=random_state, 
+            feature_scaling=scaling_choice, classification=classification)
+        print("\nX_train info: \n", X_train.info())
+        print(X_train.head())
+        
+        
+        if classification and xgb:
+            encoder = LabelEncoder()
+            y_train = encoder.fit_transform(y_train)
+            y_test = encoder.transform(y_test)
+                    
+        t1 = time.time()
+        print("Training the model...")
+        model.set_params(**params)
+        model.fit(X_train, y_train)
+        y_pred_test = model.predict(X_test)
+        t2 = time.time()
+        print(f"Training time: {(t2 - t1)//60} minutes, {round((t2 - t1)%60)} seconds")
+
+        if classification:
+            print("\n[X_test]:\n", classification_report(y_test, y_pred_test))
+        else:
+            print("\n[X_test]:\n", MLToolBox.regression_report(y_test, y_pred_test))
+        
+        print(f"\nTotal execution time: {(t2 - t0)//60} minutes, {round((t2 - t0)%60)} seconds")
+        print(MLToolBox.compare_results(y_test, y_pred_test))
+
+        info = MLToolBox.get_info_dict(model=model, data_shape=data_shape, y_test=y_test, y_pred_test=y_pred_test, 
+                                       dataset_name=dataset_name, random_state=random_state, scaling_choice=scaling_choice, 
+                                       test_size=test_size, t1=t1, t2=t2, t0=t0, classification=classification
+                                       )
+        
+        table = PrettyTable(['Key', 'Value'])
+        for key, value in info.items():
+            table.add_row([key, value])
+        print(table)
+        #print(pd.DataFrame([info]).transpose())
+        return model, info
         
         
     @staticmethod
     def save_model(model, model_type='other'):
         co2.data.save_model(model, model_type)
         
-     
     
     
-    
-    
-    
-class DataBaseManager:
-    DB_DIR = '../database'
-    DB_PATH = '../database/experiments.db'
-    
-    
-    EXPERIMENTS_COLUMNS = ['id', 'model_type', 'dataset_name', 'date', 'problem_type', 
-                           'num_features', 'num_rows', 'accuracy_or_r2', 'random_state', 
-                           'normalisation', 'test_size', 'training_time', 'total_time']
 
-    EXPERIMENTS_SQL_INSTRUCTIONS = ['integer PRIMARY KEY AUTOINCREMENT', 'text NOT NULL', 'text NOT NULL', 
-                                    'text', 'text NOT NULL', 'integer NOT NULL', 'integer NOT NULL', 
-                                    'real NOT NULL', 'integer NOT NULL', 'integer NOT NULL', 'real NOT NULL', 
-                                    'real NOT NULL', 'real NOT NULL']
-
-    XP_HYPERPARAMETERS_COLUMNS = ['id', 'model_type', 'problem_type', 'criterion', 'max_depth', 
-                                  'min_samples_leaf', 'max_leaf_nodes', 'min_impurity_decrease', 
-                                  'rf_n_estimators', 'rf_max_features', 'rf_bootstrap', 
-                                  'xgb_learning_rate', 'xgb_gamma', 'lr_fit_intercept', 
-                                  'lr_normalize', 'lr_copy_x', 'lr_n_jobs', 'encv_l1_ratio', 
-                                  'encv_eps', 'encv_n_alphas', 'encv_fit_intercept']
-
-    XP_HYPERPARAMETERS_SQL_INSTRUCTIONS = ['integer', 'text NOT NULL', 'text NOT NULL', 'text', 
-                                        'integer', 'integer', 'integer', 'real', 'integer', 'text', 'text', 
-                                        'real', 'real', 'text', 'text', 'text', 'integer', 'real', 
-                                        'real', 'integer', 'text', 
-                                        'FOREIGN KEY (id) REFERENCES experiments (id)']
-
-    CLASS_RESULTS_COLUMNS = ['id', 'model_type', 'metric', 'A', 'B', 'C', 'D', 'E', 'F', 'G']
-
-    CLASS_RESULTS_SQL_INSTRUCTIONS = ['integer', 'text NOT NULL', 'text NOT NULL', 
-                                    'real', 'real', 'real', 'real', 'real', 'real', 'real', 
-                                    'FOREIGN KEY (id) REFERENCES experiments (id)']
-
-    MODEL_HYPERPARAMETERS_COLUMNS = ['model_type', 'hyperparameter1', 'hyperparameter2', 
-                                     'hyperparameter3', 'hyperparameter4']
-
-    MODEL_HYPERPARAMETERS_SQL_INSTRUCTIONS = ['text PRIMARY KEY', 'text NOT NULL', 'text NOT NULL', 
-                                              'text NOT NULL', 'text NOT NULL']
-    
-    MODEL_TO_HYPERPARAMETERS = {
-        'DecisionTreeClassifier': ['criterion', 'max_depth', 'min_samples_leaf', 'max_leaf_nodes'],
-        'RandomForestClassifier': ['n_estimators', 'criterion', 'max_depth', 'max_features'],
-        'XGBClassifier': ['learning_rate', 'max_depth', 'n_estimators', 'gamma'],
-        'LinearRegression': ['fit_intercept', 'normalize', 'copy_X', 'positive'],
-        'ElasticNetCV': ['l1_ratio', 'eps', 'n_alphas', 'fit_intercept'],
-        'XGBRegressor': ['learning_rate', 'max_depth', 'n_estimators', 'gamma']
-        }
-
-    
-    @staticmethod
-    def convert_int_to_float(values):
-        for i, value in enumerate(values):
-            if isinstance(value, int):
-                print(f"Converting value {value} at index {i} to float.")
-                values[i] = float(value)
-            elif not isinstance(value, (float, str)):
-                print(f"Error: Unsupported data type {type(value)} at index {i}.")
-        return values
-
-    
-    @staticmethod
-    def db_connection(db_path):
-        conn = None
-        try:
-            conn = sqlite3.connect(db_path)
-            print(f"Connection to SQLite DB successful")
-        except Error as e:
-            print(f"The error '{e}' occurred")
-        return conn
-    
-    @staticmethod
-    def create_table_sql(table_name, columns, sql_instructions):
-        column_defs = ', '.join(f'{col} {sql}' for col, sql in zip(columns, sql_instructions))
-        return f'CREATE TABLE IF NOT EXISTS {table_name} ({column_defs})'
-        
-    def db_init(db_path):
-        if not os.path.exists(DataBaseManager.DB_DIR):
-            os.makedirs(DataBaseManager.DB_DIR)
-        
-        conn = DataBaseManager.db_connection(db_path)  # Use db_path here
-        c = conn.cursor()  # Create cursor here
-
-        c.execute('PRAGMA foreign_keys = ON;')  # Enable foreign key constraints
-
-        try:
-            tables_and_columns = {
-                'experiments': (DataBaseManager.EXPERIMENTS_COLUMNS, DataBaseManager.EXPERIMENTS_SQL_INSTRUCTIONS),
-                'xp_hyperparameters': (DataBaseManager.XP_HYPERPARAMETERS_COLUMNS, DataBaseManager.XP_HYPERPARAMETERS_SQL_INSTRUCTIONS),
-                'class_results': (DataBaseManager.CLASS_RESULTS_COLUMNS, DataBaseManager.CLASS_RESULTS_SQL_INSTRUCTIONS),
-                'model_hyperparameters': (DataBaseManager.MODEL_HYPERPARAMETERS_COLUMNS, DataBaseManager.MODEL_HYPERPARAMETERS_SQL_INSTRUCTIONS)
-            }
-
-            for table_name, (columns, sql_instructions) in tables_and_columns.items():
-                print(f"Creating {table_name} table...")
-                c.execute(DataBaseManager.create_table_sql(table_name, columns, sql_instructions))
-            print("Tables created!")
-        except Error as e:
-            print(e)
-
-    @staticmethod
-    def add_table(conn, info, table_name, keys_to_add):
-        cur = conn.cursor()
-        print(f"Adding data to {table_name} table...")
-        for key in keys_to_add: # Ensure all necessary columns exist
-            try:
-                cur.execute(f"SELECT {key} FROM {table_name}")
-            except sqlite3.OperationalError:
-                cur.execute(f"ALTER TABLE {table_name} ADD COLUMN {key}")
-                
-        # Insert the data
-        keys = ', '.join(keys_to_add)
-        placeholders = ', '.join('?' for _ in keys_to_add)
-        values = tuple(info.get(key) for key in keys_to_add)
-        values = DataBaseManager.convert_int_to_float(list(values))  # Convert integers to floats
-        sql = f"INSERT INTO {table_name} ({keys}) VALUES ({placeholders})"
-        cur.execute(sql, values)
-        print(f"Data added to {table_name}!")
-        return cur.lastrowid
-
-
-    @staticmethod
-    def add_experiment(conn, info):
-        print(f"Debug: info = {info}")  # Debugging print statement
-
-        keys_to_add = DataBaseManager.EXPERIMENTS_COLUMNS  # Use the constant here
-
-        experiment_id = DataBaseManager.add_table(conn, info, 'experiments', keys_to_add)
-        return experiment_id  # return the experiment_id
-
-    @staticmethod 
-    def add_xp_hyperparameters(conn, info):
-        print(f"Debug: info = {info}")  # Debugging print statement
-
-        keys_to_add = DataBaseManager.XP_HYPERPARAMETERS_COLUMNS  # Use the constant here
-        
-        return DataBaseManager.add_table(conn, info, 'xp_hyperparameters', keys_to_add)
-
-    @staticmethod
-    def add_class_results(conn, info):
-        print(f"Debug: info = {info}")  # Debugging print statement
-
-        print("Adding class results to database...")
-        keys_to_add = DataBaseManager.CLASS_RESULTS_COLUMNS  # Use the constant here
-        metrics = ['precision', 'recall', 'f1-score', 'support']
-        for metric in metrics:
-            data = {'model_type': info['model_type'], 'metric': metric}
-            for class_name in DataBaseManager.CLASS_RESULTS_COLUMNS[-7:]:  # Iterate over the last 7 elements
-                if f"{class_name}_{metric}" in info:
-                    data[class_name] = info[f"{class_name}_{metric}"]
-            DataBaseManager.add_table(conn, data, 'class_results', keys_to_add)
-        print("Class results added!")
-         
-
-    @staticmethod
-    def update_all_tables(info, db_path='../database/experiments.db'):
-        print("Checking if database exists...")
-        DataBaseManager.db_init(db_path)
-        print("Initializing database...")
-        conn = DataBaseManager.db_connection(db_path)
-        print("Connection established, updating tables...")
-        print("Updating experiments table...")
-        experiment_id = DataBaseManager.add_experiment(conn, info)
-        print("Experiment added")
-        print("Updating xp_hyperparameters table...")
-        hyperparameters_id = DataBaseManager.add_xp_hyperparameters(conn, info)
-        print("XP hyperparameters added")
-        print("Updating class_results table...")
-        class_results_id = DataBaseManager.add_class_results(conn, info)
-        print("Class results added")
-        conn.commit()
-        print("Changes committed!")
-        return experiment_id, hyperparameters_id, class_results_id
     
     
 class MLVisualizer:

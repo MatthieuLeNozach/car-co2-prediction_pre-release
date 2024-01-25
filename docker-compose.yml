@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  repo:
+    image: auto_co2
+    volumes:
+      - .:/app
+    stdin_open: true
+    tty: true
+    entrypoint: ["/bin/bash"]
+    command: ["-c", "source activate co2 && python launcher.py"]

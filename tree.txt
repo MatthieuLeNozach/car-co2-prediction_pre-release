@@ -1,0 +1,328 @@
+.
+├── app
+│   ├── class_preprocessing.py
+│   ├── fetch_dataset_git-lfs.py
+│   ├── fetch_dataset.py
+│   ├── models.py
+│   ├── __pycache__
+│   │   ├── models.cpython-311.pyc
+│   │   ├── models.cpython-39.pyc
+│   │   └── sqlite_db.cpython-39.pyc
+│   ├── reg_preprocessing.py
+│   └── sqlite_db.py
+├── build
+│   ├── bdist.linux-x86_64
+│   └── lib
+│       └── auto_co2
+│           ├── agg.py
+│           ├── data.py
+│           ├── __init__.py
+│           ├── styles.py
+│           └── viz.py
+├── data
+│   ├── processed
+│   │   ├── aggregated_datasets
+│   │   │   ├── co2_regression_eur_agg2.csv
+│   │   │   ├── co2_regression_eur_agg3.csv
+│   │   │   ├── co2_regression_eur_agg4.csv
+│   │   │   └── co2_regression_eur_agg.csv
+│   │   ├── classification
+│   │   │   ├── co2_classification2_SK.csv
+│   │   │   ├── co2_classification_ES-PT.csv
+│   │   │   ├── co2_classification_IS-DK-LT.csv
+│   │   │   └── co2_classification_SK.csv
+│   │   ├── co2_classification_20240112-160632.csv
+│   │   ├── co2_classification_20240112-160632.pkl
+│   │   ├── co2_classification_20240112-161106.csv
+│   │   ├── co2_classification_20240112-161106.pkl
+│   │   ├── co2_classification_20240112-170602.csv
+│   │   ├── co2_classification_20240112-170602.pkl
+│   │   ├── co2_classification_20240112-171919.csv
+│   │   ├── co2_classification_20240112-171919.pkl
+│   │   ├── co2_classification_20240112-172140.pkl
+│   │   ├── co2_classification_20240114-200454.csv
+│   │   ├── co2_classification_dataset_fr-de-2021.csv
+│   │   ├── co2_regression_20240115-195601.csv
+│   │   ├── co2_regression_20240115-201114.csv
+│   │   ├── co2_regression.csv
+│   │   └── regression
+│   │       ├── co2_data_regression_FR-DE.csv
+│   │       └── co2_data_regression_IT-SK_IT-SK.csv
+│   ├── raw
+│   │   ├── auto_co2_eur_21_raw.csv
+│   │   ├── automobile-co2-emissions-eu-2021.zip
+│   │   └── test.ipynb
+│   └── sample
+│       ├── co2_raw_sample.csv
+│       ├── co2_regression_20240112-151326.pkl
+│       └── co2_regression_sample.csv
+├── database
+│   └── experiments.db
+├── Dockerfile
+├── environment0.yml
+├── environment_from_history.yml
+├── environment.yml
+├── launcher.py
+├── models
+│   ├── Booster_20240116_104843.pkl
+│   ├── Booster_20240116_105352.pkl
+│   ├── Booster_20240116_112447.pkl
+│   ├── DecisionTreeClassifier_20240114_012052.pkl
+│   ├── DecisionTreeClassifier_20240114_013021.pkl
+│   ├── linear_regression_simple_en.pkl
+│   ├── MyDecisionTreeClassifier_20240122_192059.pkl
+│   ├── MyDecisionTreeClassifier_20240122_192929.pkl
+│   ├── RandomForestClassifier_20240114_012241.pkl
+│   ├── RandomForestClassifier_20240114_013210.pkl
+│   ├── XGBClassifier_20240114_012252.model
+│   ├── XGBClassifier_20240114_013725.model
+│   └── xgb_reg_trained_on_eur_agg.pkl
+├── notebooks
+│   ├── 2.1_class_preprocessing_fr-de_2021.ipynb
+│   ├── 2.2_classification_fr-de-2021.ipynb
+│   ├── 2.3_dl_classification.ipynb
+│   ├── 3.1_reg_preprocessing_fr-de_2021.ipynb
+│   ├── 3.2_regression_fr-de_2021.ipynb
+│   ├── ml_on_aggregated_data
+│   │   ├── reg_preprocessing_agg3.ipynb
+│   │   ├── reg_preprocessing_agg4.ipynb
+│   │   ├── reg_preprocessing_agg.ipynb
+│   │   ├── test_agg_class.ipynb
+│   │   ├── test_agg_reg2.ipynb
+│   │   ├── test_agg_reg3.ipynb
+│   │   └── test_agg_reg4.ipynb
+│   ├── t.1.1_test_viz.ipynb
+│   ├── t.2.1_test_class_preprocessing.ipynb
+│   ├── t.2.2_test_classification.ipynb
+│   ├── t.3.1_test_reg_preprocessing.ipynb
+│   ├── t.3.2_test_regression.ipynb
+│   └── viz_eur_2021.ipynb
+├── output
+│   ├── figures
+│   │   ├── classification_fr-de_2021
+│   │   │   ├── Courbes_ROC__Decision_Tree_20240114_013023.png
+│   │   │   ├── Feature_Importance__XGBoost_Classifier_20240114_013726.png
+│   │   │   ├── Matrice_de_confusion___Decision_Tree_20240114_013008.png
+│   │   │   ├── Matrice_de_confusion___Random_Forest_20240114_013158.png
+│   │   │   ├── Matrice_de_confusion___XGBoost_Classifier_20240114_013723.png
+│   │   │   ├── Matrice_de_confusion___XGBoost_Classifier_20240114_013728.png
+│   │   │   ├── Part_de_la_variance_expliqu_e__composants_PCA_20240114_013215.png
+│   │   │   ├── R_partition_des_classes__20240114_012957.png
+│   │   │   ├── SHAP_Summary__XGBoost_Classifier_20240114_041141.png
+│   │   │   ├── XGBoost_Classifier__Erreur_Moyenne_20240114_013719.png
+│   │   │   └── XGBoostClassifier__Moyenne_LogLoss_20240114_013719.png
+│   │   ├── Comparaison_de_la_masse_et_de_la_puissance_des_v_hicules__KW__20240122_154349.png
+│   │   ├── Comparaison_de_la_masse_et_de_la_puissance_des_v_hicules__KW__20240122_160928.png
+│   │   ├── Comparaison_de_la_masse_et_de_la_puissance_des_v_hicules__KW__20240122_160947.png
+│   │   ├── Comparaison_de_la_masse_et_de_la_puissance_des_v_hicules__KW__20240122_161001.png
+│   │   ├── Comparaison_de_la_masse_et_de_la_puissance_des_v_hicules__KW__20240122_161159.png
+│   │   ├── Comparaison_de_la_masse_et_de_la_puissance_des_v_hicules__KW__20240122_161219.png
+│   │   ├── Comparaison_de_la_masse_et_de_la_puissance_des_v_hicules__KW__20240122_161251.png
+│   │   ├── Comparaison_de_la_masse_et_de_la_puissance_des_v_hicules__KW__20240122_161613.png
+│   │   ├── data_preprocessing_fr-de_2021
+│   │   │   ├── Corr_lation_des_variables_quantitatives__20240114_201727.png
+│   │   │   ├── Corr_lation_des_variables_quantitatives___FR_ALL_2021_20240114_202006.png
+│   │   │   ├── Distribution_des_variables_explicatives__20240114_201745.png
+│   │   │   ├── Distribution_des_variables_explicatives___FR_ALL_2021_20240114_202024.png
+│   │   │   └── Quantiles_observ_s_vs_quantiles_d_une_distribution_normale__QQ_Plots____FR_ALL_2021_20240114_202043.png
+│   │   ├── Engine_Power_vs_CO2_Emissions_20240122_160158.png
+│   │   ├── Engine_Power_vs_CO2_Emissions_20240122_160948.png
+│   │   ├── Engine_Power_vs_CO2_Emissions_20240122_161003.png
+│   │   ├── Engine_Power_vs_CO2_Emissions_20240122_161200.png
+│   │   ├── Engine_Power_vs_CO2_Emissions_20240122_161221.png
+│   │   ├── Engine_Power_vs_CO2_Emissions_20240122_161253.png
+│   │   ├── Engine_Power_vs_CO2_Emissions_20240122_161627.png
+│   │   ├── Meilleures_ventes_2021_20240122_161253.png
+│   │   ├── Meilleures_ventes_2021_20240122_161628.png
+│   │   ├── Nombre_d_immatriculations_par_mois_20240122_161403.png
+│   │   ├── Nombre_d_immatriculations_par_mois_20240122_161630.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_lourds___Kg__20240122_160928.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_lourds___Kg__20240122_160946.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_lourds___Kg__20240122_161001.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_lourds___Kg__20240122_161158.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_lourds___Kg__20240122_161219.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_lourds___Kg__20240122_161251.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_lourds___Kg__20240122_161612.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_polluants___CO2__20240122_160927.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_polluants___CO2__20240122_160946.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_polluants___CO2__20240122_161000.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_polluants___CO2__20240122_161158.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_polluants___CO2__20240122_161218.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_polluants___CO2__20240122_161250.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_polluants___CO2__20240122_161611.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_puissants___KWh__20240122_160928.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_puissants___KWh__20240122_160946.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_puissants___KWh__20240122_161001.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_puissants___KWh__20240122_161158.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_puissants___KWh__20240122_161219.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_puissants___KWh__20240122_161251.png
+│   │   ├── Quel_pays_ach_te_les_v_hicules_les_plus_puissants___KWh__20240122_161612.png
+│   │   ├── regression_fr-de_2021
+│   │   │   ├── Corr_lation_des_variables_quantitatives___FR_ALL_2021_20240114_220807.png
+│   │   │   ├── Corr_lation_des_variables_quantitatives___FR_ALL_2021_20240114_221049.png
+│   │   │   ├── Distribution_des_variables_explicatives___FR_ALL_2021_20240114_220825.png
+│   │   │   ├── Distribution_des_variables_explicatives___FR_ALL_2021_20240114_221106.png
+│   │   │   ├── Mean_squared_error_pour_chaque_lambda_20240116_103935.png
+│   │   │   ├── Mean_square_error_on_each_fold_20240116_103737.png
+│   │   │   ├── PERFORMANCES_DU_MODELE_ELASTICNET_20240116_103456.png
+│   │   │   ├── PERFORMANCES_DU_MODELE_XGBOOST_REGRESSOR_20240116_112451.png
+│   │   │   ├── Quantiles_observ_s_vs_quantiles_d_une_distribution_normale__QQ_Plots____FR_ALL_2021_20240114_220844.png
+│   │   │   ├── Quantiles_observ_s_vs_quantiles_d_une_distribution_normale__QQ_Plots____FR_ALL_2021_20240114_221125.png
+│   │   │   ├── R_gression_lin_aire_simple_20240116_102149.png
+│   │   │   ├── R_gression_lin_aire_simple_20240116_102645.png
+│   │   │   ├── R_gression_lin_aire_simple_20240116_102728.png
+│   │   │   ├── SHAP_Dependence_Plot__BaseWheel_vs_SHAP_values_20240116_114349.png
+│   │   │   ├── SHAP_Dependence_Plot__ElectricRange_vs_SHAP_values_20240116_114341.png
+│   │   │   ├── SHAP_Dependence_Plot__ElectricRange_vs_SHAP_values_20240116_114345.png
+│   │   │   └── SHAP_Dependence_Plot__MassRunningOrder_vs_SHAP_values_20240116_114353.png
+│   │   ├── R_partition_des_immatriculation_par_marque_et_groupe_automobile_20240122_154338.png
+│   │   ├── R_partition_des_immatriculation_par_marque_et_groupe_automobile_20240122_160928.png
+│   │   ├── R_partition_des_immatriculation_par_marque_et_groupe_automobile_20240122_160946.png
+│   │   ├── R_partition_des_immatriculation_par_marque_et_groupe_automobile_20240122_161001.png
+│   │   ├── R_partition_des_immatriculation_par_marque_et_groupe_automobile_20240122_161158.png
+│   │   ├── R_partition_des_immatriculation_par_marque_et_groupe_automobile_20240122_161219.png
+│   │   ├── R_partition_des_immatriculation_par_marque_et_groupe_automobile_20240122_161251.png
+│   │   ├── R_partition_des_immatriculation_par_marque_et_groupe_automobile_20240122_161613.png
+│   │   ├── u_20240122_154129.png
+│   │   ├── untitled_20240122_154352.png
+│   │   ├── untitled_20240122_160928.png
+│   │   ├── untitled_20240122_160947.png
+│   │   ├── untitled_20240122_161001.png
+│   │   ├── untitled_20240122_161159.png
+│   │   ├── untitled_20240122_161220.png
+│   │   ├── untitled_20240122_161251.png
+│   │   ├── untitled_20240122_161409.png
+│   │   ├── untitled_20240122_161614.png
+│   │   ├── Voitures_les_moins_polluantes_20240122_161253.png
+│   │   ├── Voitures_les_moins_polluantes_20240122_161628.png
+│   │   ├── Voitures_les_plus_polluantes_20240122_161253.png
+│   │   └── Voitures_les_plus_polluantes_20240122_161628.png
+│   ├── interpretability
+│   │   ├── classification_fr-de_2021
+│   │   └── regression_fr-de_2021
+│   │       ├── ndarray_explainer_20240116_114357.csv
+│   │       ├── ndarray_shap_values_20240116_114357.csv
+│   │       ├── output.png
+│   │       └── shap_feature_importance_reg.png
+│   └── tables
+│       ├── PERFORMANCES_DU_MODELE_DE_REGRESSION_LINEAIRE_20240124_202337.html
+│       ├── PERFORMANCES_DU_MODELE_DE_REGRESSION_LINEAIRE_20240124_202352.html
+│       ├── PERFORMANCES_DU_MODELE_XGBOOST_20240124_215900.html
+│       ├── tables_fr-all_2021
+│       │   ├── APERCU_DU_JEU_DE_DONNEES__FR_ALL_2021_20240114_122309.html
+│       │   ├── DONNEES_BRUTES__FR_ALL_2021_20240114_122309.html
+│       │   ├── DONNEES_NETTOYEES__FR_ALL_2021_20240114_122318.html
+│       │   ├── PART_DE_VALEURS_MANQUANTES_DANS_LE_JEU_DE_DONNEES__FR_ALL_2021_20240114_122312.html
+│       │   ├── PERFORMANCES_DU_MODELE_DE_REGRESSION_LINEAIRE_20240116_095047.html
+│       │   ├── PERFORMANCES_DU_MODELE_ELASTIC_NET_20240116_102932.html
+│       │   ├── REGRESSION_LINEAIRE__COMPARAISON_DE_QUELQUES_VALEURS_20240114_221516.html
+│       │   ├── REGRESSION_LINEAIRE__COMPARAISON_DE_QUELQUES_VALEURS_20240116_095047.html
+│       │   └── STATISTIQUES_DESCRIPTIVES__FR_ALL_2021_20240114_202006.html
+│       ├── Top_10_des_voitures_les_moins_polluantes_20240122_161201.html
+│       ├── Top_10_des_voitures_les_moins_polluantes_20240122_161221.html
+│       ├── Top_10_des_voitures_les_moins_polluantes_20240122_161253.html
+│       ├── Top_10_des_voitures_les_moins_polluantes_20240122_161628.html
+│       ├── Top_10_des_voitures_les_moins_polluantes__WLTP__20240122_160930.html
+│       ├── Top_10_des_voitures_les_moins_polluantes__WLTP__20240122_160948.html
+│       ├── Top_10_des_voitures_les_moins_polluantes__WLTP__20240122_161002.html
+│       ├── Top_10_des_voitures_les_moins_polluantes__WLTP__20240122_161200.html
+│       ├── Top_10_des_voitures_les_moins_polluantes__WLTP__20240122_161221.html
+│       ├── Top_10_des_voitures_les_moins_polluantes__WLTP__20240122_161253.html
+│       ├── Top_10_des_voitures_les_moins_polluantes__WLTP__20240122_161627.html
+│       ├── Top_10_des_voitures_les_plus_gourmandes_20240122_161221.html
+│       ├── Top_10_des_voitures_les_plus_gourmandes_20240122_161253.html
+│       ├── Top_10_des_voitures_les_plus_gourmandes_20240122_161628.html
+│       ├── Top_10_des_voitures_les_plus_polluantes__WLTP__20240122_160930.html
+│       ├── Top_10_des_voitures_les_plus_polluantes__WLTP__20240122_160948.html
+│       ├── Top_10_des_voitures_les_plus_polluantes__WLTP__20240122_161002.html
+│       ├── Top_10_des_voitures_les_plus_polluantes__WLTP__20240122_161200.html
+│       ├── Top_10_des_voitures_les_plus_polluantes__WLTP__20240122_161221.html
+│       ├── Top_10_des_voitures_les_plus_polluantes__WLTP__20240122_161253.html
+│       ├── Top_10_des_voitures_les_plus_polluantes__WLTP__20240122_161627.html
+│       ├── Top_5_des_pays_par_capacit__de_propulsion__lectrique__moyenne_kms__20240122_160946.html
+│       ├── Top_5_des_pays_par_capacit__de_propulsion__lectrique__moyenne_kms__20240122_161000.html
+│       ├── Top_5_des_pays_par_capacit__de_propulsion__lectrique__moyenne_kms__20240122_161158.html
+│       ├── Top_5_des_pays_par_capacit__de_propulsion__lectrique__moyenne_kms__20240122_161218.html
+│       ├── Top_5_des_pays_par_capacit__de_propulsion__lectrique__moyenne_kms__20240122_161250.html
+│       ├── Top_5_des_pays_par_capacit__de_propulsion__lectrique__moyenne_kms__20240122_161253.html
+│       ├── Top_5_des_pays_par_capacit__de_propulsion__lectrique__moyenne_kms__20240122_161611.html
+│       ├── Top_5_des_pays_par_capacit__de_propulsion__lectrique__moyenne_kms__20240122_161630.html
+│       ├── Top_5_des_voitures_les_moins_polluantes_20240122_161021.html
+│       ├── Top_8_marques_en_Europe__2021__20240122_160946.html
+│       ├── Top_8_marques_en_Europe__2021__20240122_161001.html
+│       ├── Top_8_marques_en_Europe__2021__20240122_161158.html
+│       ├── Top_8_marques_en_Europe__2021__20240122_161219.html
+│       ├── Top_8_marques_en_Europe__2021__20240122_161251.html
+│       ├── Top_8_marques_en_Europe__2021__20240122_161613.html
+│       ├── untitled_20240122_160927.html
+│       ├── untitled_20240122_160930.html
+│       ├── untitled_20240122_160946.html
+│       ├── untitled_20240122_160948.html
+│       ├── untitled_20240122_161000.html
+│       ├── untitled_20240122_161002.html
+│       ├── untitled_20240122_161003.html
+│       ├── untitled_20240122_161157.html
+│       ├── untitled_20240122_161200.html
+│       ├── untitled_20240122_161218.html
+│       ├── untitled_20240122_161221.html
+│       ├── untitled_20240122_161250.html
+│       ├── untitled_20240122_161253.html
+│       ├── untitled_20240122_161609.html
+│       ├── untitled_20240122_161627.html
+│       ├── untitled_20240122_161628.html
+│       └── untitled_20240122_161632.html
+├── README.md
+├── references
+├── requirements.txt
+├── setup.py
+├── src
+│   ├── auto_co2
+│   │   ├── agg.py
+│   │   ├── data.py
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── agg.cpython-311.pyc
+│   │   │   ├── agg.cpython-39.pyc
+│   │   │   ├── data.cpython-39.pyc
+│   │   │   ├── __init__.cpython-311.pyc
+│   │   │   ├── __init__.cpython-39.pyc
+│   │   │   ├── styles.cpython-39.pyc
+│   │   │   └── viz.cpython-39.pyc
+│   │   ├── styles.py
+│   │   └── viz.py
+│   └── auto_co2.egg-info
+│       ├── dependency_links.txt
+│       ├── PKG-INFO
+│       ├── SOURCES.txt
+│       └── top_level.txt
+├── temp
+│   ├── 06_Regressiont_v200_ludo.ipynb
+│   ├── 06_Regressiont_v211 (1).ipynb
+│   ├── 06_Regressiont_v211.ipynb
+│   ├── agg_temp.ipynb
+│   ├── auto_sklearn.ipynb
+│   ├── class_dataset_generator.ipynb
+│   ├── classification_fr-de-2021.ipynb
+│   ├── classification_v200.ipynb
+│   ├── docker.ipynb
+│   ├── experiments.db
+│   ├── gui_app.py
+│   ├── project_organisation.md
+│   ├── regression_fr-de_2021 copy.ipynb
+│   ├── regression_fr-de_2021.ipynb
+│   ├── t.1.1_test_viz copy 2.ipynb
+│   ├── t.1.1_test_viz copy.ipynb
+│   ├── t.3.2_test_regression.ipynb
+│   ├── temp_app.ipynb
+│   ├── temp_db.ipynb
+│   ├── temp.ipynb
+│   ├── temp_launcher.ipynb
+│   ├── temp_models.ipynb
+│   ├── test_2.ipynb
+│   ├── test3.ipynb
+│   ├── test.ipynb
+│   ├── test_regression_dask copy.ipynb
+│   └── test_regression_dask.ipynb
+└── tree.txt
+
+33 directories, 292 files

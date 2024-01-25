@@ -12,7 +12,6 @@ dependencies:
   - tensorflow
   - xgboost
   - shap
-  - kaggle
   - streamlit
   - graphviz
   - python-graphviz
@@ -21,5 +20,6 @@ dependencies:
   - selenium
   - unidecode
   - skater
+  - prettytable
 
 prefix: /home/mln/miniconda3/envs/co2

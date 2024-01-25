@@ -1,13 +1,11 @@
 import os
 import time
-from pathlib import Path
 import numpy as np
 import pandas as pd
 import requests
 import zipfile
 import datetime
 from xgboost import XGBClassifier, XGBRegressor
-import kaggle
 import pickle
 from tensorflow.keras.models import Model
 
@@ -18,7 +16,8 @@ COL_NAMES_SHORTFORM = [
         'Cn', 'Ct', 'Cr', 'r', 'm (kg)', 'Mt', 'Enedc (g/km)', 'Ewltp (g/km)', 'W (mm)',
         'At1 (mm)', 'At2 (mm)', 'Ft', 'Fm', 'ec (cm3)', 'ep (KW)', 'z (Wh/km)', 'IT',
         'Ernedc (g/km)', 'Erwltp (g/km)', 'De', 'Vf', 'Status', 'year', 'Date of registration',
-        'Fuel consumption ', 'Electric range (km)']
+        'Fuel consumption ', 'Electric range (km)'
+        ]
 
 COL_NAMES_LONGFORM = [ # Official column names from EEA's' website
         'ID', 'Country', 'VehicleFamilyIdentification', 'Pool', 'ManufacturerName', 'ManufNameOem',
@@ -29,45 +28,39 @@ COL_NAMES_LONGFORM = [ # Official column names from EEA's' website
         'EngineCapacity', 'EnginePower', 'ElectricConsumption',
         'InnovativeTechnology', 'InnovativeEmissionsReduction',
         'InnovativeEmissionsReductionWltp', 'DeviationFactor', 'VerificationFactor',
-        'Status', 'RegistrationYear', 'RegistrationDate', 'FuelConsumption', 'ElectricRange']
+        'Status', 'RegistrationYear', 'RegistrationDate', 'FuelConsumption', 'ElectricRange'
+        ]
 
 TOTALLY_UNUSABLE_COLUMNS = [
-            'VehicleFamilyIdentification', 'ManufNameMS', 'TypeApprovalNumber', 
-            'Type', 'Variant', 'Version', 'VehicleCategory',
-           'TotalNewRegistrations', 'Co2EmissionsNedc', 'AxleWidthOther', 'Status',
-           'InnovativeEmissionsReduction', 'DeviationFactor', 'VerificationFactor', 'Status',
-           'RegistrationYear']
+        'VehicleFamilyIdentification', 'ManufNameMS', 'TypeApprovalNumber', 
+        'Type', 'Variant', 'Version', 'VehicleCategory',
+        'TotalNewRegistrations', 'Co2EmissionsNedc', 'AxleWidthOther', 'Status',
+        'InnovativeEmissionsReduction', 'DeviationFactor', 'VerificationFactor', 'Status',
+        'RegistrationYear'
+        ]
 
-VIZ_COLUMNS_SELECTION = ['Make', 'RegistrationDate', 'CommercialName', 'MassRunningOrder', 'Co2EmissionsWltp', 'BaseWheel', 'EnginePower', 
-                        'InnovativeTechnology', 'ElectricRange', 'Pool', 'FuelType', 'FuelConsumption', 'Country', 'AxleWidthSteering', 'ID']
+VIZ_COLUMNS_SELECTION = [
+        'Make', 'RegistrationDate', 'CommercialName', 'MassRunningOrder', 
+        'Co2EmissionsWltp', 'BaseWheel', 'EnginePower', 'InnovativeTechnology', 
+        'ElectricRange', 'Pool', 'FuelType', 'FuelConsumption', 
+        'Country', 'AxleWidthSteering', 'ID'
+        ]
 
-ML_COLUMNS_SELECTION = ['MassRunningOrder', 'Co2EmissionsWltp', 'BaseWheel', 'EnginePower', 
-                        'InnovativeTechnology', 'ElectricRange', 'Pool', 'FuelType']
+ML_COLUMNS_SELECTION = [
+        'MassRunningOrder', 'Co2EmissionsWltp', 'BaseWheel', 'EnginePower', 
+        'InnovativeTechnology', 'ElectricRange', 'Pool', 'FuelType'
+        ]
 
-
+RAW_DATASET_PATH = '../data/raw'
+GITHUB_DATASET_ARCHIVE_URL = 'https://github.com/MatthieuLeNozach/car-co2-prediction_pre-release/raw/0.2.01-alpha/data/raw/automobile-co2-emissions-eu-2021.zip'
+CLASSIFICATION_DATASET_PATH = '../data/processed/classification'
+REGRESSION_DATASET_PATH = '../data/processed/regression'
 
 ########## End of Constants ##########
 
-
-
-########## Security tools ##########
-
-def secure_path(filepath:str):
-    root = Path('../')
-    absolute_filepath = Path(filepath).resolve()
-    
-    if root not in absolute_filepath.parents:
-        raise ValueError(f"Path {filepath} is not within the repository root, please save the file within the repository boundaries and try again.")
-
-
-########## End of security tools ##########
-
-
-
-
 ########## Fetching raw data from Github ##########
 
-def download_file(url:str, filepath:str):
+def download_file(url=None, filepath=None):
     """
     Downloads a file from a URL.
 
@@ -75,6 +68,11 @@ def download_file(url:str, filepath:str):
     url (str): The URL of the file to download.
     filepath (str): The local path where the file will be saved.
     """
+    if url is None:
+        url = GITHUB_DATASET_ARCHIVE_URL
+    if filepath is None:
+        filepath = os.path.join(RAW_DATASET_PATH, 'automobile-co2-emissions-eu-2021.zip')
+        
     response = requests.get(url, stream=True)
     response.raise_for_status()
 
@@ -84,6 +82,7 @@ def download_file(url:str, filepath:str):
 
     print(f"File has been downloaded to {filepath}.")
 
+
 def unzip(zipfile_path, target_path):
     """
     Extracts a ZIP file.
@@ -91,9 +90,15 @@ def unzip(zipfile_path, target_path):
     Parameters:
     zipfile_path (str): The path of the ZIP file.
     extract_path (str): The path where the ZIP file will be extracted.
+
+    Returns:
+    str: The path of the extracted file.
     """
     with zipfile.ZipFile(zipfile_path, 'r') as zip_ref:
         zip_ref.extractall(target_path)
+        extracted_file = zip_ref.namelist()[0]  # Get the name of the first file in the zip
+
+    return os.path.join(target_path, extracted_file)
 
 def download_and_load_co2_data(filepath='../data/raw'):
     """
@@ -106,15 +111,20 @@ def download_and_load_co2_data(filepath='../data/raw'):
     DataFrame: The loaded data.
     """
     dataset_name = "automobile-co2-emissions-eu-2021"
-    url = 'https://github.com/MatthieuLeNozach/car-co2-prediction_pre-release/blob/0.2.01-alpha/data/raw/automobile-co2-emissions-eu-2021.zip'
+    url = 'https://github.com/MatthieuLeNozach/car-co2-prediction_pre-release/raw/0.2.01-alpha/data/raw/automobile-co2-emissions-eu-2021.zip'
     zipfile_path = os.path.join(filepath, f"{dataset_name}.zip")
     csv_file_path = os.path.join(filepath, "auto_co2_eur_21_raw.csv")
 
     if not os.path.isfile(csv_file_path):
+        print(f"File {csv_file_path} not found, searching archive file...")
         if not os.path.isfile(zipfile_path):
+            print(f"Archive file {zipfile_path} not found, downloading...")
             download_file(url, zipfile_path)
+            print("Download complete! Unzipping...")
         unzip(zipfile_path, filepath)
-
+    else:
+        print(f"File {csv_file_path} found, loading...")
+    print("Loading data into a Pandas DataFrame...")
     data = pd.read_csv(csv_file_path, low_memory=False)
     return data
 
@@ -462,10 +472,8 @@ def dataviz_preprocess(df, countries=None):
 
 # ***** High Level Function: ML CLEANING ***** #
 def ml_preprocess(df, countries=None, 
-                     rem_fuel_consumption=True, 
                      electricrange_nantozero=True,
-                     discretize_electricrange=True):
-    
+                     discretize_electricrange_flag=True):
     """
     Performs machine learning preprocesing.
 
@@ -488,22 +496,19 @@ def ml_preprocess(df, countries=None,
     rows_t0 = len(df)
         
     print("Keeping only selected columns...")
-    df_new = keep_only_selected_columns(df = df_new, columns_to_keep = ML_COLUMNS_SELECTION)
+    df_new = keep_only_selected_columns(df = df, columns_to_keep = ML_COLUMNS_SELECTION)
     
     print("binarizing InnovativeTechnology...")
     df_new = standardize_innovtech(df_new)
     
-    if rem_fuel_consumption:
-        print("Removing FuelConsumption column...")
-        df_new = df_new.drop(columns=['FuelConsumption'])  
     
     print("Setting ElectricRange missing values to 0...")
     if electricrange_nantozero:
         df_new.loc[df_new['ElectricRange'].isna(), 'ElectricRange'] = 0
         
-    if discretize_electricrange:
+    if discretize_electricrange_flag:
         print("Discretizing ElectricRange...")
-        df_new = discretize_electricrange(df_new, to_dummies=True)
+        df_new = discretize_electricrange(df_new)
         
     
     print("Dropping rows with incomplete data if under 5%...")   
@@ -647,12 +652,13 @@ def generate_unique_filename(filepath, filename, country_names=None, pickle=True
         counter +=1
     return f"{filename}_{country_names if country_names else ''}{counter if counter > 1 else ''}"
 
-def save_data(df, filepath=None, country_names=None, filename='co2_data', pickle=True):
+def save_processed_data(df, classification=False, filepath=None, country_names=None, filename='co2_data', pickle=True):
     """
     Saves the processed dataset.
 
     Parameters:
     df (DataFrame): The DataFrame to save.
+    classification (bool, optional): Defaults to False. If True, the data is considered as classification data.
     filepath (str, optional): Defaults to '../data/processed'.
     country_names (str, optional): Defaults to None.
     filename (str, optional): Defaults to 'co2_data'.
@@ -661,7 +667,13 @@ def save_data(df, filepath=None, country_names=None, filename='co2_data', pickle
     Returns:
     None
     """
-    filepath = prepare_save_path(filepath)
+    if classification:
+        filepath = CLASSIFICATION_DATASET_PATH
+        filename = f"{filename}_classification"
+    else:
+        filepath = REGRESSION_DATASET_PATH
+        filename = f"{filename}_regression"
+
     unique_filename = generate_unique_filename(filepath, filename, country_names, pickle)
 
     if pickle:

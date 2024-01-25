@@ -12,8 +12,8 @@ ADD . /app
 # Create a conda environment from the environment.yml file
 RUN conda env create -f environment.yml
 
-# Install SQLite CLI
-RUN apt-get update && apt-get install -y sqlite3
+# Install SQLite CLI and wget
+RUN apt-get update && apt-get install -y sqlite3 wget
 
 # Install the Python package
 RUN conda run -n co2 pip install .
@@ -23,5 +23,5 @@ EXPOSE 80
 # Install pandas using conda in the co2 environment
 RUN conda run -n co2 conda install -y pandas
 
-# Run the application when the Docker container starts
-CMD conda run -n co2 python launcher.py
+# Start a shell in the co2 environment when the container launches
+CMD ["conda", "run", "-n", "co2", "python", "launcher.py"]

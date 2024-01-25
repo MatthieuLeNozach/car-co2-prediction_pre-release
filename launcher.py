@@ -1,40 +1,46 @@
 import os
 import argparse
 import subprocess
+import readline
 import time
 import datetime
 import pandas as pd
 import sqlite3
+import unittest
+from prettytable import PrettyTable
 
-from app.models import MLToolBox, DataBaseManager, MyDecisionTreeClassifier
+import auto_co2 as co2
+from app.models import MLToolBox, MyDecisionTreeClassifier, MyRandomForestClassifier, MyXGBoostClassifier
+from app.models import MyLinearRegression, MyElasticNetCV, MyXGBoostRegressor
+from app.sqlite_db import DataBaseManager
 from sklearn.metrics import classification_report
 
 header = """
-################################################################
-#                          #####  #######  #####               #
-#  ####    ##   #####     #     # #     # #     #              #
-# #    #  #  #  #    #    #       #     #       #              #
-# #      #    # #    #    #       #     #  #####               #
-# #      ###### #####     #       #     # #                    #
-# #    # #    # #   #     #     # #     # #                    #
-#  ####  #    # #    #     #####  ####### #######              #
-#                                                              #
-#                                                              #
-# ###### #    # #  ####   ####  #  ####  #    #  ####          #
-# #      ##  ## # #      #      # #    # ##   # #              #
-# #####  # ## # #  ####   ####  # #    # # #  #  ####          #
-# #      #    # #      #      # # #    # #  # #      #         #
-# #      #    # # #    # #    # # #    # #   ## #    #         #
-# ###### #    # #  ####   ####  #  ####  #    #  ####          #
-#                                                              #
-#                                                              #
-# #####  #####  ###### #####  #  ####  ##### #  ####  #    #   #
-# #    # #    # #      #    # # #    #   #   # #    # ##   #   #
-# #    # #    # #####  #    # # #        #   # #    # # #  #   #
-# #####  #####  #      #    # # #        #   # #    # #  # #   #
-# #      #   #  #      #    # # #    #   #   # #    # #   ##   #
-# #      #    # ###### #####  #  ####    #   #  ####  #    #   #
-################################################################
+##################################################################
+#                            #####  #######  #####               #
+#    ####    ##   #####     #     # #     # #     #              #
+#   #    #  #  #  #    #    #       #     #       #              #
+#   #      #    # #    #    #       #     #  #####               #
+#   #      ###### #####     #       #     # #                    #
+#   #    # #    # #   #     #     # #     # #                    #
+#    ####  #    # #    #     #####  ####### #######              #
+#                                                                #
+#                                                                #
+#   ###### #    # #  ####   ####  #  ####  #    #  ####          #
+#   #      ##  ## # #      #      # #    # ##   # #              #
+#   #####  # ## # #  ####   ####  # #    # # #  #  ####          #
+#   #      #    # #      #      # # #    # #  # #      #         #
+#   #      #    # # #    # #    # # #    # #   ## #    #         #
+#   ###### #    # #  ####   ####  #  ####  #    #  ####          #
+#                                                                #
+#                                                                #
+#   #####  #####  ###### #####  #  ####  ##### #  ####  #    #   #
+#   #    # #    # #      #    # # #    #   #   # #    # ##   #   #
+#   #    # #    # #####  #    # # #        #   # #    # # #  #   #
+#   #####  #####  #      #    # # #        #   # #    # #  # #   #
+#   #      #   #  #      #    # # #    #   #   # #    # #   ##   #
+#   #      #    # ###### #####  #  ####    #   #  ####  #    #   #
+##################################################################
 2023-2024
 Ludovic CALMETTES
 Pierre-Olivier KAPNANG
@@ -48,8 +54,25 @@ class App:
     def __init__(self):
         self.valid_countries = ['ES', 'DE', 'PL', 'IS', 'MT', 'FR', 'BE', 'GR', 'IE', 'NO', 'HR', 'HU', 'SK', 'AT',
                                 'PT', 'NL', 'DK', 'LV', 'IT', 'FI', 'CY', 'CZ', 'SE', 'RO', 'SI', 'EE', 'BG', 'LU', 'LT']
-        os.chdir('./app')
+        os.chdir('./app') 
+        
+############################################# PROMPTING TOOLS #############################################
 
+    def parse_input(self, prompt, default_value):
+        user_input = input(f"{prompt} (default: {default_value}): ")
+        if user_input == '':
+            return default_value
+        else:
+            try: # try to convert to int
+                return int(user_input)
+            except ValueError:
+                try: # if int fails, try to convert to float
+                    return float(user_input)
+                except ValueError: # if float fails, check for boolean
+                    if user_input.lower() in ['true', 'false']:
+                        return user_input.lower() == 'true'
+                    else: # if not boolean, it's a string
+                        return user_input
         
     def get_string_input(self, prompt, default):
         value = input(prompt)
@@ -58,6 +81,8 @@ class App:
     def get_int_input(self, prompt, default):
         value = input(prompt)
         return int(value) if value.isdigit() else default
+    
+############################################# END OF PROMPTING TOOLS #############################################
     
     def docker_build(self):
         print("Building the Docker image...")
@@ -108,20 +133,17 @@ class App:
             print("Docker container launched successfully")
             print("The app is now running on http://localhost:4000")
                     
-    def fetch_data_from_kaggle(self):
-        while True:
-            kaggle_auth_file_path = input("Please enter the path to your Kaggle auth file (JSON)")
-            if os.path.isfile(kaggle_auth_file_path):
-                print("Fetching the data from Kaggle.com...")
-                self.run_script('fetch_dataset.py', path=kaggle_auth_file_path)
-                break
-            else:
-                print("Error: The path doesn't lead to a valid file. Please check the path and try again")
 
+############################################# PREPROCESS PROMPTS #############################################
         
     def get_countries(self):
         while True:
-            country_input = input("Please enter the EU country code(s) you want to keep (separated by a comma, has to be ISO alpha-2 like FR, IT...):\n")
+            print("Available countries: \n\
+               AT, BE, BG, CY, CZ, DE, DK, EE,\n\
+               ES, FI, FR, GR, HR, HU, IE, IS,\n\
+               IT, LT, LU, LV, MT, NL, NO, PL,\n\
+               PT, RO, SE, SI, SK")
+            country_input = input("Please enter the EU country code(s) you want to keep, separated by a comma, has to be ISO alpha-2 like FR, IT...):\n")
             countries = [country.strip().upper() for country in country_input.split(',')]
             if all(country in self.valid_countries for country in countries):
                 return countries
@@ -156,12 +178,17 @@ class App:
             else:   
                 print("Error: Invalid choice, please try again")
                 
+############################################# END OF PREPROCESS PROMPTS #############################################
+
+############################################# PRE EXPERIMENT PROMPTS #############################################                
                 
-    def get_processed_dataset(self, classification=True):
-        if classification:
+    def get_processed_dataset(self, problem_type='classification'):
+        if problem_type == 'classification':
             dir_path = "../data/processed/classification"
-        else:
+        elif problem_type == 'regression':
             dir_path = "../data/processed/regression"
+        else:
+            raise ValueError(f"Invalid problem_type: {problem_type}")   
             
         datasets = os.listdir(dir_path) # List of all the files in the directory
         datasets = sorted(datasets, key=lambda x: os.path.getmtime(os.path.join(dir_path, x)),  reverse=True)[:9] # key parameter takes a function
@@ -174,9 +201,7 @@ class App:
                 dataset_name = datasets[int(dataset_choice) - 1]
                 return os.path.join(dir_path, dataset_name), dataset_name
             else:
-                print("Error: Invalid choice, please try again")
-                
-                
+                print("Error: Invalid choice, please try again")       
     
     def get_data_treatment(self):
         default_test_size = 0.2
@@ -186,13 +211,37 @@ class App:
         test_size = input("\nEnter test_size (default: 0.2): ").strip()
         test_size = float(test_size) if test_size else default_test_size
 
-        random_state = input("Enter random_state (default: 42): ").strip()
-        random_state = int(random_state) if random_state.isdigit() else default_random_state
+        random_state = default_random_state
+        user_input = input("Enter random_state (default: 42): ").strip()
+        if user_input.isdigit():
+            random_state = int(user_input)
 
         scaling_choice = input("Enter scaling_choice (0: no scaling, 1: MinMax normalizaion, 2: Standardization, default: 0): ").strip()
         scaling_choice = int(scaling_choice) if scaling_choice in ['0', '1', '2'] else default_scaling_choice
-
+        print("random state: " , random_state)
         return test_size, random_state, scaling_choice
+    
+    def get_hyperparameters(self, model_name):
+        # Map model names to their corresponding classes
+        model_classes = {
+            'DecisionTreeClassifier': MyDecisionTreeClassifier,
+            'RandomForestClassifier': MyRandomForestClassifier,
+            'XGBClassifier': MyXGBoostClassifier,
+            'LinearRegression': MyLinearRegression,
+            'ElasticNetCV': MyElasticNetCV,
+            'XGBRegressor': MyXGBoostRegressor,
+            }
+        
+        hyperparameters = model_classes[model_name].DEFAULT_HYPERPARAMS
+        hps = {}
+
+        print("Press enter to use the hyperparameter's default value.")
+        print("[CAUTION] An unexpected value or data type will cause the program to break!")
+        print("Please refer to scikit-learn / keras documentations for more information.")
+
+        for hyperparameter, default_value in hyperparameters.items():
+            hps[hyperparameter] = self. parse_input(f"Enter {hyperparameter}", default_value)
+        return hps
 
     
     def get_classification_model(self):
@@ -204,104 +253,69 @@ class App:
             model_choice = input()
             if model_choice.isdigit() and model_choice in ['1', '2', '3']:
                 if model_choice == '1':
-                    model = MyDecisionTreeClassifier()
-                    params = model.get_parameters(
-                        self.get_string_input, self.get_int_input)
-                    model.set_params(**params) # Method inherited from sklearn.base.BaseEstimator
+                    model_name = 'DecisionTreeClassifier'
                 elif model_choice == '2':
+                    # model = MyRandomForestClassifier()
+                    model_name = 'RandomForestClassifier'
                     pass
                 elif model_choice == '3':
+                    # model = MyXGBoostClassifier()
+                    model_name = 'XGBClassifier'
                     pass
                 break
             else:
                 print("Error: Invalid choice, please try again")
-        return model, model_choice, params
-                
-     
-    def run_classification(self):
-        print(os.getcwd())
-        dataset_path, dataset_name = self.get_processed_dataset()
-        model, model_choice, params = self.get_classification_model()        
-        info = self.prepare_and_run_model(model=model, dataset_name=dataset_name, dataset_path=dataset_path, classification=True)
-     
-        save_model_mapping = {1: 'other', 2: 'other', 3: 'xgb'}
+        return model_name
+    
+    
+    def get_regression_model(self):
         while True:
-            save_choice = input("Do you want to save the model? (y/n)")
-            if save_choice in ['y', 'n']:
-                if save_choice == 'y':
-                    MLToolBox.save_model(model, save_model_mapping[int(model_choice)]) # int >> user input is a string
+            print("Please select a model:")
+            print("[1] Linear Regression")
+            print("[2] ElasticNet CV")
+            print("[3] XGBoost Regressor")
+            model_choice = input()
+            if model_choice.isdigit() and model_choice in ['1', '2', '3']:
+                if model_choice == '1':
+                    model_name = 'LinearRegression'
+                elif model_choice == '2':
+                    model_name = 'ElasticNetCV'
+                    pass
+                elif model_choice == '3':
+                    model_name = 'XGBRegressor'
+                    pass
                 break
             else:
                 print("Error: Invalid choice, please try again")
-        
-        while True:
-            database_update_choice = input("Do you want to update the database with these results? (y/n)")
-            if database_update_choice in ['y', 'n']:
-                if database_update_choice == 'y':
-                    dbm = DataBaseManager().update_all_tables(info)  # Pass info here
-                break
-                   
-  
+        return model_name
+                
 
-    
-    def prepare_and_run_model(self, model, dataset_name, dataset_path, classification):  # Changed from model_choice to model
-        t0 = time.time()
+############################################# END OF PRE EXPERIMENT PROMPTS #############################################        
+   
+############################################# EXPERIMENTATION ############################################# 
+    def run_experiment(self, problem_type):
+        print(os.getcwd())
+        dataset_path, dataset_name = self.get_processed_dataset(problem_type=problem_type)
+        model_name = (self.get_classification_model() if problem_type == 'classification' else self.get_regression_model())
+        params = self.get_hyperparameters(model_name)
         test_size, random_state, scaling_choice = self.get_data_treatment()
+        ml = MLToolBox
+        model, info = ml.model_pipeline(model_name=model_name, 
+                                params=params,
+                                dataset_name=dataset_name, 
+                                dataset_path=dataset_path,
+                                classification=(problem_type == 'classification'), # checks for a true/false
+                                test_size=test_size,
+                                random_state=random_state,
+                                scaling_choice=scaling_choice)
         
-        X_train, X_test, y_train, y_test = MLToolBox.prepare(
-            dataset_path=dataset_path, test_size=test_size, random_state=random_state, 
-            feature_scaling=scaling_choice, classification=classification)
-                
-        t1 = time.time()
-        print("Training the model...")
-        # model.fit(X_train, y_train)  # Removed the line that loads the model
-        y_pred_test = model.train_and_predict(X_test, y_test)  # Use train_and_predict method
-        t2 = time.time()
-        print(f"Training time: {(t2 - t1)//60} minutes, {round((t2 - t1)%60)} seconds")
+        input("Press any key to continue...")   
+        #print(f"info after model_pipeline: {info}") debug print
+    
+        self.save_model(model, model_name)
+        self.update_database(info, problem_type)
         
-        #y_pred_train = model.predict(X_train)
         
-        #print("\n[X_train]:\n", classification_report(y_train, y_pred_train))
-        print("\n[X_test]:\n", classification_report(y_test, y_pred_test))
-        print(f"\nTotal execution time: {(t2 - t0)//60} minutes, {round((t2 - t0)%60)} seconds")
-        print(MLToolBox.compare_results(y_test, y_pred_test))
-    
-        report_test = classification_report(y_test, y_pred_test, output_dict=True)
-
-        # Create a dictionary with all necessary information
-        info = {
-            'model_type': type(model).__name__,
-            'dataset_name': dataset_name,
-            'accuracy_or_r2': report_test['accuracy'],
-            'num_features': X_train.shape[1],
-            'num_rows': X_train.shape[0],
-            'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),  # Add this line
-            'problem_type': classification,
-            'hyperparameters': model.get_params(),
-            'normalisation': scaling_choice,
-            'random_state': random_state,
-            'test_size': test_size,
-            'training_time': t2 - t1,
-            'total_time': t2 - t0
-        }
-        #report_train = classification_report(y_train, y_pred_train, output_dict=True)
-        for label, metrics in report_test.items():
-            if isinstance(metrics, dict):
-                info[f"{label}_precision"] = metrics['precision']
-                info[f"{label}_recall"] = metrics['recall']
-                info[f"{label}_f1-score"] = metrics['f1-score']
-                info[f"{label}_support"] = metrics['support']
-            else:
-                info[label] = metrics
-                
-        print(pd.DataFrame([info]).transpose())
-        input("Press any key to continue...")  
-
-        return info    
-  
-    
-    
-    
     def run_script(self, script_name, args=None, path=None):
         t0 = time.time()
         if path is not None: # For a file possibly outside the current directory
@@ -320,23 +334,72 @@ class App:
         print(f"Execution time: {(t1 - t0)//60} minutes, {round((t1 - t0)%60)} seconds")
         input("Press any key to continue...")
         
-        
+############################################# END OF EXPERIMENTATION #############################################
+
+############################################# POST EXPERIMENT PROMPTS #############################################     
+
+    def save_model(self, model, model_name):
+        save_model_mapping = {1: 'other', 2: 'other', 3: 'xgb'}
+        while True:
+            save_choice = input("Do you want to save the model? (y/n)")
+            if save_choice in ['y', 'n']:
+                if save_choice == 'y':
+                    MLToolBox.save_model(model, save_model_mapping[int(model_name)]) # int >> user input is a string        
+                break
+            else:
+                print("Error: Invalid choice, please try again")
+                
+    def update_database(self, info, problem_type):
+        while True:
+            database_update_choice = input("Do you want to update the database with these results? (y/n)")
+            if database_update_choice in ['y', 'n']:
+                if database_update_choice == 'y':
+                    #print(f"info before sql_pipeline: {info}") #debug print
+                    db_path = '../database/experiments.db'  # replace with your actual db_path
+                    dbm = DataBaseManager().sql_pipeline(info=info, db_path=db_path, classification=(problem_type == 'classification'))
+                    print("Experiment saved successfully!")
+                    input("Press any key to continue...")
+                break
+            
+############################################# END OF POST EXPERIMENT PROMPTS #############################################
         
     def run_sqlite_session(self):
-        conn = sqlite3.connect('experiments.db')
-        cursor = conn.cursor()
+        conn = sqlite3.connect('../database/experiments.db')
+        cur = conn.cursor()
+
+        with open('query_logs.txt', 'a+') as f:
+            f.seek(0)
+            lines = f.readlines()[:5]
+            print("Last 5 queries:")
+            for line in lines:
+                print(line.strip())
 
         while True:
             query = input("Enter an SQL query or 'exit' to quit: ")
+            readline.add_history(query)  # Add this line to save the input to the readline history
+
             if query.lower() == 'exit':
                 break
 
             try:
-                cursor.execute(query)
-                print(cursor.fetchall())
+                cur.execute(query)
+                results = cur.fetchall()
+                column_names = [description[0] for description in cur.description]
+                
+                num_columns_per_table = 8  # Splitting tables with too many columns...
+                for start_col in range(0, len(column_names), num_columns_per_table):
+                    end_col = start_col + num_columns_per_table
+                    table = PrettyTable(column_names[start_col:end_col])
+                    for row in results:
+                        table.add_row(row[start_col:end_col])
+
+                    print(table)
+
+                with open('query_logs.txt', 'a') as f:
+                    f.write(query + '\n')
+
             except sqlite3.Error as e:
                 print(f"An error occurred: {e}")
-        
         
  ############################################# MAIN LOOP #############################################
         
@@ -345,23 +408,25 @@ class App:
             print(header)
             print("Welcome to the Automobile CO2 Emissions Prediction app!")
             print("Please select an option: ")
-            print("[1] Restart the app in a Docker container (Docker engine must be running)")
+            print("[1] Build the repo's Docker image, linux/docker engine users only, docker engine must be running")
+            print("Instructions for Windows/Mac & docker_desktop in the readme.md")
             print("\n########################## CAUTION! ##########################") 
             print("For the following options, you must install the our auto_co2 package first: [ pip install -e . ]")
             print("Please also mind the python libraries in the requirements.txt file...")
             print("Creating a python virual environment is strongly advised!\n")
-            print("[2] Fetch the data from Kaggle.com (requires a Kaggle auth file)")
+            print("[2] Fetch the dataset from github.com")
             print("[3] Run preprocessing")
             print("[4] Run a classification model")
             print("[5] Run a regression model")
-            print("[8] Exit")
+            print("[8] Run a SQLite session")
+            print("[9] Exit")
             choice = input('> ')
             
             if choice == "1":
-                self.manage_docker()
+                self.docker_build()
             
             elif choice == '2':
-                self.fetch_data_from_kaggle()
+                co2.data.download_file()
                 
             elif choice == '3':
                 countries = self.get_countries()
@@ -372,15 +437,15 @@ class App:
                 elif preprocessing_choice == '2':   
                     self.run_script('class_preprocessing.py', args={'--countries': countries, '--save': save})
                 elif preprocessing_choice == '3':
-                    pass
+                    self.run_script('reg_preprocessing.py', args={'--countries': countries, '--save': save})
                 elif preprocessing_choice == '4':
                     pass
                 
             elif choice == '4':
-                self.run_classification()
+                self.run_experiment('classification')
                 
             elif choice == '5':
-                pass
+                self.run_experiment('regression')
             
             elif choice == '8':
                 self.run_sqlite_session()

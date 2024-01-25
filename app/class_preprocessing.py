@@ -6,7 +6,6 @@ import importlib
 import time
 
 import pandas as pd
-import kaggle
 
 import auto_co2 as co2
 
@@ -33,9 +32,9 @@ zip_file_path = '../data/raw/automobile-co2-emissions-eu-2021.zip'
 csv_target_path = '../data/raw'
 
 
-unzipped_file = co2.data.unzip(zip_file_path)
-df = pd.read_csv(unzipped_file)
-df = co2.data.preprocess(df, countries=args.countries)
+unzipped_file = co2.data.unzip(zipfile_path=zip_file_path, target_path=csv_target_path)
+df = pd.read_csv(unzipped_file, low_memory=False)
+df = co2.data.data_preprocess(df, countries=args.countries)
 print("Data successfully loaded!")
 
 if SAVE_TABLES:
@@ -53,10 +52,11 @@ print(df.info(), '\n')
 # Nettoyage des données
 print("Cleaning the data...")
 df = co2.data.ml_preprocess(df, countries=args.countries,
-                               rem_axlewidth=True,
-                               rem_fuel_consumption=True,
-                               rem_engine_capacity=True,
-                               electricrange_nantozero=True)
+                               electricrange_nantozero=True,
+                               discretize_electricrange_flag=True)
+if SAVE_PLOTS:
+    print("Generating correlation heatmap...")
+    co2.viz.plot_correlation_heatmap(df, interactive=False, save=SAVE_PLOTS, title=f': {countries_str}')
 
 
 if SAVE_TABLES:
@@ -64,20 +64,24 @@ if SAVE_TABLES:
     print("Generating HTML tables on processed data...")
     co2.styles.display_info(df, title=f'DONNEES NETTOYEES: {countries_str}', save=SAVE_TABLES) 
     co2.styles.display_describe(df, title=f'STATISTIQUES DESCRIPTIVES: {countries_str}', save=SAVE_TABLES)
+    print("Tables saved in output/tables/")
     time.sleep(1)
 
+
 if SAVE_PLOTS:
-    print("Generating correlation heatmap...")
-    co2.viz.plot_correlation_heatmap(df, interactive=False, save=SAVE_PLOTS, title=f': {countries_str}')
     print("Generating feature distributions plot...")
     co2.viz.plot_feature_distributions(df, interactive=False, save=SAVE_PLOTS, title=f': {countries_str}')
     print("Generating QQ plot...")
     co2.viz.plot_qqplots(df, interactive=False, save=SAVE_PLOTS, title=f': {countries_str}')
+    print("Plots saved in output/plots/")
     time.sleep(1)
 
 # One-hot encoding des variables catégorielles
 print("One-hot encoding categorical variables...")
-df = co2.data.dummify_all_categoricals(df, should_discretize_electricrange=True)
+df = co2.data.dummify_all_categoricals(df)
+print("Generating Co2 score..")
+df = co2.data.get_classification_data(df)
+
 
 print('\n', df.info(), '\n')
 time.sleep(1)
@@ -87,4 +91,4 @@ co2.data.save_processed_data(df, classification=CLASSIFICATION, country_names=co
 
 
 print("\nDataset successully preprocessed and saved!")
-print("Plots saved in output/plots, tables saved in output/tables/, data saved in output/data/processed")
+print("Processed data file saved in output/data/processed")
