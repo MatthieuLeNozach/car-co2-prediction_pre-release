@@ -141,7 +141,9 @@ class DataBaseManager:
     def check_if_table_exists(cur, table_name):
         # Check if the table exists
         q = f"""
-        SELECT name FROM sqlite_master WHERE type='table' AND name=?
+        SELECT name 
+        FROM sqlite_master 
+        WHERE type='table' AND name=?
         """
         cur.execute(q, (table_name,))
         result = cur.fetchone()
@@ -367,6 +369,7 @@ class DataBaseManager:
         # 1. adds experiment to master table
         # 2. splits master table into general tables
         # 3. splits master table into class results table if classification
+        # 4. splits master table into reg results table if regression
         
         if db_path is None:
             db_path = DataBaseManager.DB_PATH

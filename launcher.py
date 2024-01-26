@@ -83,7 +83,8 @@ class App:
         return int(value) if value.isdigit() else default
     
 ############################################# END OF PROMPTING TOOLS #############################################
-    
+
+############################################# DOCKER TOOLS #############################################
     def docker_build(self):
         print("Building the Docker image...")
         os.chdir('../')
@@ -97,7 +98,7 @@ class App:
             print("Docker image built successfully")
         os.chdir('./app')
 
-    def manage_docker(self):
+    def manage_docker(self): # Couldn't launch the docker container from the app: pandas error (maybe a conda env activation problem?)
         if os.path.exists('/.dockerenv'):
             print("Error: This app is already running in a Docker container")
             return
@@ -122,7 +123,7 @@ class App:
             print("Docker container is not running, launching it...")
             self.launch_docker_service()
 
-    def launch_docker_service(self):
+    def launch_docker_service(self): # Also not in use
         print("Launching the Docker container...")
         command = ['docker', 'run', '-it', '-p', '4000:80', 'auto_co2', 'python3', 'launcher.py']
         process = subprocess.run(command)
@@ -133,6 +134,7 @@ class App:
             print("Docker container launched successfully")
             print("The app is now running on http://localhost:4000")
                     
+############################################# END OF DOCKER TOOLS #############################################
 
 ############################################# PREPROCESS PROMPTS #############################################
         
@@ -143,7 +145,7 @@ class App:
                ES, FI, FR, GR, HR, HU, IE, IS,\n\
                IT, LT, LU, LV, MT, NL, NO, PL,\n\
                PT, RO, SE, SI, SK")
-            country_input = input("Please enter the EU country code(s) you want to keep, separated by a comma, has to be ISO alpha-2 like FR, IT...):\n")
+            country_input = input("Please enter the EU country code(s) you want to keep, separated by a comma:\n")
             countries = [country.strip().upper() for country in country_input.split(',')]
             if all(country in self.valid_countries for country in countries):
                 return countries
@@ -292,14 +294,14 @@ class App:
 
 ############################################# END OF PRE EXPERIMENT PROMPTS #############################################        
    
-############################################# EXPERIMENTATION ############################################# 
+############################################# ML PIPELINE ############################################# 
     def run_experiment(self, problem_type):
         print(os.getcwd())
         dataset_path, dataset_name = self.get_processed_dataset(problem_type=problem_type)
         model_name = (self.get_classification_model() if problem_type == 'classification' else self.get_regression_model())
         params = self.get_hyperparameters(model_name)
         test_size, random_state, scaling_choice = self.get_data_treatment()
-        ml = MLToolBox
+        ml = MLToolBox()
         model, info = ml.model_pipeline(model_name=model_name, 
                                 params=params,
                                 dataset_name=dataset_name, 
@@ -325,7 +327,7 @@ class App:
         if args:
             for flag, value in args.items():
                 if isinstance(value, list):
-                    cmd.extend([flag] + value) # example: {'--countries': ['FR', 'DE'], '--save': 3}
+                    cmd.extend([flag] + value) 
                 else:
                     cmd.extend([flag, str(value)])
         
@@ -334,7 +336,7 @@ class App:
         print(f"Execution time: {(t1 - t0)//60} minutes, {round((t1 - t0)%60)} seconds")
         input("Press any key to continue...")
         
-############################################# END OF EXPERIMENTATION #############################################
+############################################# END OF ML PIPELINE #############################################
 
 ############################################# POST EXPERIMENT PROMPTS #############################################     
 

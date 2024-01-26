@@ -26,7 +26,7 @@ import auto_co2 as co2
 class MyDecisionTreeClassifier(DecisionTreeClassifier):
     DEFAULT_HYPERPARAMS = { # selection of hyperparameters for user prompt
         'criterion': 'gini',
-        'max_depth': None,
+        'max_depth': 20,
         'min_samples_leaf': 1,
         'max_leaf_nodes': None,
         'min_impurity_decrease': 0.0,

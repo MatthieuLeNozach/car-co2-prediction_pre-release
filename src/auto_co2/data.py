@@ -318,7 +318,7 @@ def keep_only_selected_columns(df, columns_to_keep):
     Returns:
     DataFrame: The DataFrame with only the specified columns.
     """
-    return df.reindex(columns=columns_to_keep)
+    return df.reindex(columns=columns_to_keep) # Column reindexing doesnt raise an error if some columns are missing
 
 
 def print_dropped_columns(df, columns):

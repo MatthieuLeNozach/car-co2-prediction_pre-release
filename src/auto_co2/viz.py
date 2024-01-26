@@ -247,7 +247,7 @@ def countrywise_viz(countries, save=True, format='png'): # Plotly Express
 
 
 ########## Manufacturerwise visualization #########
-def plot_popular_fueltype(manufacturers, save=True, format='png'):
+def plot_popular_fueltype(manufacturers, interactive=False, save=True, format='png'):
     """
     plot_popular_fueltype visualizes the distribution of fuel types by car make/manufacturer using a stacked bar chart.
     
@@ -271,7 +271,8 @@ def plot_popular_fueltype(manufacturers, save=True, format='png'):
     layout = go.Layout(barmode='stack', title="Répartition des types de carburants par marque/groupe automobile")
     fig = go.Figure(data=traces, layout=layout)
     fig.show()
-
+    
+    show_if_interactive(fig, interactive)
     save_if_needed(fig, save, format)
 
 
@@ -288,30 +289,17 @@ def plot_popular_fueltype(manufacturers, save=True, format='png'):
 
 def plot_registrations_per_month(df:pd.DataFrame, interactive=True, save=True, format='png'):
     """
-    plot_registrations_per_month visualizes the number of car registrations per month in a bar chart.
-    
-    It takes a DataFrame df as input, converts the RegistrationDate column to datetime, 
-    extracts the month, groups by month and counts the rows to get the registration count per month.
-    
-    It then plots this as a bar chart with the month on the x-axis and the registration count on the y-axis.
-    
-    The figure can be displayed interactively and/or saved to a file.
     """
-    mois = ['Janvier', 'Février', 'Mars', 'Avril', 
-                        'Mai', 'Juin', 'Juil.', 'Août', 
-                        'Sept.', 'Oct.', 'Nov.', 'Déc.']
-
+    month_map = {1: 'Janvier', 2: 'Février', 3: 'Mars', 4: 'Avril', 
+                 5: 'Mai', 6: 'Juin', 7: 'Juil.', 8: 'Août', 
+                 9: 'Sept.', 10: 'Oct.', 11: 'Nov.', 12: 'Déc.'}
 
     df['RegistrationDate'] = pd.to_datetime(df['RegistrationDate'])
-    df['Month'] = df['RegistrationDate'].dt.month
-    # Convert the groupby object to a DataFrame
+    df['Month'] = df['RegistrationDate'].dt.month.map(month_map)  # Map month numbers to names
     monthly_counts = df.groupby('Month').size().reset_index(name='counts')
 
-
-    # Create a bar chart
     fig = px.bar(monthly_counts, x='Month', y='counts', color='counts', color_continuous_scale='Purples')
 
-    # Update the layout
     fig.update_layout(
         title={
             'text': "Nombre d'immatriculations par mois",
@@ -321,7 +309,8 @@ def plot_registrations_per_month(df:pd.DataFrame, interactive=True, save=True, f
             'yanchor': 'top'},
         xaxis_title="Mois",
         yaxis_title="Nombre d'immatriculations",
-        showlegend=False
+        showlegend=False,
+        xaxis=dict(tickangle=-45)  # Tilt x-axis labels
     )
     show_if_interactive(fig, interactive)
     save_if_needed(fig, save, format)
@@ -596,29 +585,10 @@ def plot_confusion_matrix(y_true, y_pred,
                           format='png', 
                           title=''):
     """
-    Plots a confusion matrix given true and predicted label vectors.
-    
-    The confusion matrix shows the number of correct and incorrect predictions for each true label.
-    This gives a more detailed view of model performance than just accuracy.
-    
-    Args:
-    y_true: Array of true labels
-    y_pred: Array of predicted labels
-    palette: Color palette for heatmap
-    classes: List of class names to use on axes
-    interactive: If True, show figure interactively
-    save: If True, save figure to file
-    format: File format if saving figure
-    title: Title for figure
-    
-    Returns:
-    Figure object
     """
     cm = confusion_matrix(y_true, y_pred)
     if classes is None:
         classes = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
-    else:
-        classes = list(range(cm.shape[0]))
 
     heatmap = go.Heatmap(z=cm, 
                          x=classes, 
@@ -646,8 +616,8 @@ def plot_confusion_matrix(y_true, y_pred,
         width=600,
         height=600,
         annotations=annotations,
-        xaxis=dict(title='Labels prédits', tickfont=dict(size=14)),
-        yaxis=dict(title='Vrais labels', tickfont=dict(size=14)))
+        xaxis=dict(title='Labels prédits', tickfont=dict(size=14), tickvals=list(range(len(classes))), ticktext=classes),
+        yaxis=dict(title='Vrais labels', tickfont=dict(size=14), tickvals=list(range(len(classes))), ticktext=classes))
 
     show_if_interactive(fig, interactive)
     save_if_needed(fig, save, format)
@@ -657,18 +627,12 @@ def plot_confusion_matrix(y_true, y_pred,
 
 
 def plot_actual_vs_predicted(y_true, y_pred, interactive=False, save=True, sample=None):
-    """
-    Plot actual vs predicted values.
-    
-    Plots a scatter plot of actual vs predicted values. Also plots a diagonal 
-    reference line. Useful for inspecting over/under-prediction and bias.
-    """
     y_true = sample_data_if_needed(y_true, sample)
     y_pred = sample_data_if_needed(y_pred, sample)
     
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=y_true, y=y_pred, mode='markers', marker=dict(color='#2E8B57', size=5, opacity=0.5)))
-    fig.add_trace(go.Scatter(x=[min(y_true), max(y_true)], y=[min(y_true), max(y_true)], mode='lines', line=dict(color='red')))
+    fig.add_trace(go.Scatter(x=y_true, y=y_pred, mode='markers', marker=dict(color='#2E8B57', size=5, opacity=0.5), name='Predicted'))
+    fig.add_trace(go.Scatter(x=[min(y_true), max(y_true)], y=[min(y_true), max(y_true)], mode='lines', line=dict(color='red'), name='Actual'))
     fig.update_layout(title='Actual vs Predicted')
     show_if_interactive(fig, interactive)
     save_if_needed(fig, save, 'png')
@@ -676,54 +640,51 @@ def plot_actual_vs_predicted(y_true, y_pred, interactive=False, save=True, sampl
 
 def plot_residuals_distribution(residuals, interactive=False, save=True, sample=None):
     residuals = sample_data_if_needed(residuals, sample)
-    """
-    Plot a histogram of the residuals.
-    
-    Args:
-        residuals: Array of residual values from model predictions.
-        interactive: Whether to display plot interactively.
-        save: Whether to save plot to file.
-        sample: Optionally sample a subset of residuals.
-    
-    Returns:
-        Figure object containing the residuals histogram plot.
-    """
     
     fig = go.Figure()
-    fig.add_trace(go.Histogram(x=residuals, nbinsx=40))
+    fig.add_trace(go.Histogram(x=residuals, nbinsx=40, name='Residuals'))
     fig.update_layout(title='Residuals Distribution')
     show_if_interactive(fig, interactive)
     save_if_needed(fig, save, 'png')
     return fig
 
+def plot_residuals_vs_fitted(y_true, y_pred, interactive=True, save=False, format='png'):
+    residuals = y_true - y_pred
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=y_pred, y=residuals, mode='markers', name='Residuals'))
+    fig.update_layout(
+        title='Residuals vs Fitted',
+        xaxis_title='Fitted values',
+        yaxis_title='Residuals',
+        autosize=False,
+        width=500,
+        height=500
+    )
+    show_if_interactive(fig, interactive)
+    save_if_needed(fig, save, format)
+    return fig
+
 def plot_qq_plot(residuals, interactive=False, save=True, sample=None):
-    """
-    Plot a QQ plot for the residuals.
-    
-    A QQ plot is a graphical method to determine if a set of data likely comes from a normal distribution. 
-    The residuals are plotted against the quantiles of a normal distribution. If the residuals follow a normal distribution,
-    the points will approximately lie on the diagonal line. Deviations from the line indicate departures from normality.
-    
-    Args:
-      residuals: Array of residual values from model predictions.
-      interactive: Whether to display plot interactively.
-      save: Whether to save plot to file.
-      sample: Optionally sample a subset of residuals.
-      
-    Returns:
-      Figure object containing the QQ plot.
-    """
     residuals = sample_data_if_needed(residuals, sample)
     
     fig = go.Figure()
     residuals_norm = scale(residuals)
     (osm, osr), (slope, intercept, r) = stats.probplot(residuals_norm, dist='norm', fit=True)
-    fig.add_trace(go.Scatter(x=osm, y=osr, mode='markers'))
-    fig.add_trace(go.Scatter(x=osm, y=slope*osm + intercept, mode='lines'))
-    fig.update_layout(title='QQ Plot')
+    fig.add_trace(go.Scatter(x=osm, y=osr, mode='markers', name='Observed'))
+    fig.add_trace(go.Scatter(x=osm, y=slope*osm + intercept, mode='lines', name='Theoretical'))
+    fig.update_layout(
+        title='QQ Plot',
+        autosize=False,
+        width=500,
+        height=500,
+        xaxis=dict(title="Theoretical quantiles", scaleanchor='y'),
+        yaxis=dict(title="Observed quantiles", scaleanchor='x')
+    )
     show_if_interactive(fig, interactive)
     save_if_needed(fig, save, 'png')
     return fig
+
+
 
 
 def plot_regression_diagnostics(y_true, y_pred, residuals, title, interactive=True, save=True, format='png', sample=None):
@@ -733,7 +694,7 @@ def plot_regression_diagnostics(y_true, y_pred, residuals, title, interactive=Tr
     Plots 4 subplots:
     1) Actual vs predicted values
     2) Residuals distribution 
-    3) Histogram of residuals
+    3) Residuals vs fitted
     4) QQ plot of residuals
     
     Args:
@@ -755,8 +716,8 @@ def plot_regression_diagnostics(y_true, y_pred, residuals, title, interactive=Tr
 
     fig = make_subplots(rows=2, cols=2, subplot_titles=("Actual vs Predicted",
                                                        "Residuals Distribution",
-                                                       "Residuals Histogram",
-                                                       "QQ Plot"))
+                                                       "Residuals vs Fitted",
+                                                       "Residuals QQ Plot (x: Theoretical, y: Observed)"))
 
     # Actual vs Predicted values
     fig1 = plot_actual_vs_predicted(y_true, y_pred, interactive=False, save=False)
@@ -767,8 +728,8 @@ def plot_regression_diagnostics(y_true, y_pred, residuals, title, interactive=Tr
     fig2 = plot_residuals_distribution(residuals, interactive=False, save=False)
     fig.add_trace(fig2.data[0], row=1, col=2)
 
-    # Residuals Histogram
-    fig3 = plot_residuals_distribution(residuals, interactive=False, save=False)
+    # Residuals versus fitted
+    fig3 = plot_residuals_vs_fitted(y_true, y_pred, interactive=False, save=False)
     fig.add_trace(fig3.data[0], row=2, col=1)
 
     # QQ Plot
@@ -786,10 +747,6 @@ def plot_regression_diagnostics(y_true, y_pred, residuals, title, interactive=Tr
         
 def plot_lr_elasticnet(lr_en, title='', interactive=True, save=True, format='png', sample=None):
     """
-    Plot mean squared error vs alpha for elastic net model.
-    
-    Plots one line per fold showing MSE across alpha values. Also plots 
-    average MSE across folds. Indicates chosen alpha with vertical line.
     """
     alphas = lr_en.alphas_
 
@@ -1060,7 +1017,7 @@ def plot_shap_summary(shap_explanation, feature_names, max_num_features=20, titl
         
         
         
-def plot_shap_dependence(feature, interaction_feature, shap_values, X, title='', interactive=True, save=True, format='png', sample=None):
+def plot_shap_dependence(feature, interaction_feature, shap_values, X, title='', interactive=False, save=True, format='png', sample=None):
     """
     Plot the SHAP dependence between a feature and the SHAP values.
     
