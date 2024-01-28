@@ -437,7 +437,7 @@ class ManufacturerDataAggregator:
                                  name=make, marker_color=make_colors[make]))
 
         layout = go.Layout(barmode='stack', 
-                           title="Répartition des immatriculation par marque et groupe automobile",
+                           title="Répartition des immatriculations par marque et groupe automobile",
                            height=700)
         fig = go.Figure(data=traces, layout=layout)
         fig.show()

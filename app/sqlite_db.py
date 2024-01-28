@@ -113,7 +113,6 @@ class DataBaseManager:
 
         c.execute('PRAGMA foreign_keys = ON;')
 
-        # Generate the SQL command to create the table
         create_table_req = DataBaseManager.create_table_request('master', 
             DataBaseManager.ID_AND_COLUMNS_MASTER_TABLE)
         try:

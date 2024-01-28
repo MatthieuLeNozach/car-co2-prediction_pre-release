@@ -43,12 +43,16 @@ VIZ_COLUMNS_SELECTION = [
         'Make', 'RegistrationDate', 'CommercialName', 'MassRunningOrder', 
         'Co2EmissionsWltp', 'BaseWheel', 'EnginePower', 'InnovativeTechnology', 
         'ElectricRange', 'Pool', 'FuelType', 'FuelConsumption', 
-        'Country', 'AxleWidthSteering', 'ID'
+        'Country', 'AxleWidthSteering', 'ID', 'CategoryOf', 'InnovativeEmissionReductionsWltp'
         ]
 
 ML_COLUMNS_SELECTION = [
         'MassRunningOrder', 'Co2EmissionsWltp', 'BaseWheel', 'EnginePower', 
         'InnovativeTechnology', 'ElectricRange', 'Pool', 'FuelType'
+        ]
+
+AGG_ML_COLMUNS_SELECTION = ML_COLUMNS_SELECTION + [
+        'Make', 'CommercialName', 'CategoryOf'
         ]
 
 RAW_DATASET_PATH = '../data/raw'
@@ -293,6 +297,7 @@ def data_preprocess(df, countries=None):
     print("Selecting countries...")
     if countries is not None:
         df = select_countries(df, countries)
+    print(df.isna().sum())
     print("Converting dtypes (int/float 64 >> 32, object >> category)...")
     df = convert_dtypes(df)
     print("Setting column names to longform...")
@@ -471,7 +476,7 @@ def dataviz_preprocess(df, countries=None):
 
 
 # ***** High Level Function: ML CLEANING ***** #
-def ml_preprocess(df, countries=None, 
+def ml_preprocess(df, columns_to_keep=ML_COLUMNS_SELECTION,
                      electricrange_nantozero=True,
                      discretize_electricrange_flag=True):
     """
@@ -496,7 +501,7 @@ def ml_preprocess(df, countries=None,
     rows_t0 = len(df)
         
     print("Keeping only selected columns...")
-    df_new = keep_only_selected_columns(df = df, columns_to_keep = ML_COLUMNS_SELECTION)
+    df_new = keep_only_selected_columns(df = df, columns_to_keep = columns_to_keep)
     
     print("binarizing InnovativeTechnology...")
     df_new = standardize_innovtech(df_new)
@@ -504,7 +509,7 @@ def ml_preprocess(df, countries=None,
     
     print("Setting ElectricRange missing values to 0...")
     if electricrange_nantozero:
-        df_new.loc[df_new['ElectricRange'].isna(), 'ElectricRange'] = 0
+        df_new['ElectricRange'].fillna(0, inplace=True)
         
     if discretize_electricrange_flag:
         print("Discretizing ElectricRange...")

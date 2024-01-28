@@ -1,4 +1,80 @@
-# car-co2-prediction_pre-release
+# **car-co2-prediction**
+.
+├── app
+│   ├── class_preprocessing.py
+│   ├── models.py
+│   ├── __pycache__
+│   │   ├── models.cpython-311.pyc
+│   │   ├── models.cpython-39.pyc
+│   │   └── sqlite_db.cpython-39.pyc
+│   ├── reg_preprocessing.py
+│   └── sqlite_db.py
+├── build
+│   └── lib
+│       └── auto_co2
+│           ├── agg.py
+│           ├── data.py
+│           ├── styles.py
+│           └── viz.py
+├── data
+│   ├── processed
+│   │   ├── aggregated_datasets
+│   │   ├── classification
+│   │   └── regression
+│   ├── raw
+│   │   └── auto_co2_eur_21_raw.csv
+│   └── sample
+│       ├── co2_raw_sample.csv
+│       ├── co2_regression_20240112-151326.pkl
+│       └── co2_regression_sample.csv
+├── database
+│   ├── experiments.db
+│   └── query_logs.txt
+├── docker-compose.yml
+├── Dockerfile
+├── environment.yml
+├── launcher.py
+├── models
+├── notebooks
+│   ├── 1.1_viz_eur_2021.ipynb
+│   ├── 2.1_class_preprocessing_fr-de_2021.ipynb
+│   ├── ...
+│   └── ml_on_aggregated_data
+├── output
+│   ├── figures
+│   │   ├── classification_fr-de_2021
+│   │   │   ├── Courbes_ROC__Decision_Tree_20240114_013023.png
+│   │   │   └── ...
+│   │   ├── ml_on_aggregated_data
+│   │   │   └── ...
+│   │   ├── preprocessing_viz_eur_2021
+│   │   │   ├── Comparaison_de_la_masse_et_de_la_puissance_des_v_hicules__KW__20240126_120717.png
+│   │   │   └── ...
+│   │   └── regression_fr-de_2021
+│   │       ├── Courbe_KDE_de__20240126_120706.png
+│   │       └── ...
+│   ├── interpretability
+│   └── tables
+│       ├── ml_donnees_aggregees_eur
+│       ├── preprocess_viz_eur_2021
+│       └── tables_fr-all_2021
+├── readme
+│   ├── image-10.png
+│   └── ...
+├── README.md
+├── references
+├── requirements.txt
+├── setup.py
+├── src
+│   ├── auto_co2
+│   │   ├── agg.py
+│   │   ├── data.py
+│   │   ├── styles.py
+│   │   └── viz.py
+│   └── auto_co2.egg-info
+│       ├── dependency_links.txt
+│       └── PKG-INFO ...
+└── temp
 
 
 # **Car CO2 Emissions**
@@ -50,26 +126,13 @@ the following files need to be generated using the app:
     - In the 'Tag' field, enter the name you want to give to your Docker image. 
     - Click on the 'Build' button to start building the image.
 
-Locate the Compose File: Identify the directory containing the provided Docker Compose file ('docker-compose.yml' in this case).   
+- Locate the repository folder path and the 'docker-compose.yml' in its root
+- Open a powershell / terminal session and change working directory to the repository root
+- Type `docker-compose run repo` to run the image with the whole repository mounted as a volume
+- The app starts in a container in interactive mode
+- Exit the app and type `docker-compose down`
+
 This file defines the container configuration and dependencies for your application.
-
-Launch Docker Desktop: Launch Docker Desktop from your Windows Start Menu or system tray.  
-Wait for Docker to start and initialize properly.
-
-Open Docker Desktop GUI: Switch to the Docker Desktop GUI.  
-You can find it in the Applications menu or pinned to your taskbar.
-
-Import Compose File: Click on the "Compose" icon in the top right corner of the Docker Desktop window.  
-Choose "Import Compose file" and navigate to the directory containing your 'docker-compose.yml' file. Select the file and click "Open."
-
-Start the Application: Click the "Play" button next to the "repo" service to start the interactive container.  
-This will run the Python CLI app for machine learning experiments.
-
-Access the Application: Once the container is running, you can access the application from within the container.  
-The Compose file mounts the entire repository to the container's '/app' directory, so any changes you make to the code will be persistent.
-
-Interact with the Application: Within Docker Desktop's GUI, you can attach to the running container by clicking on the "Attach" button next to the "repo" service.  
-This will open a terminal window inside the container where you can execute commands, including running the Python CLI app.
 
 
 #### **Linux / bash terminal**
@@ -77,9 +140,9 @@ This will open a terminal window inside the container where you can execute comm
 **Build the image: the easy way...**
 - Have Docker Engine running
 - Start the app with `python launcher.py`
-- Press [1]
+- Press [1] and [Enter]
 
-**Build the image: the right way**
+**Build the image: standard procedure**
 - Open a terimnal session in the repository root
 - Build the image with `docker build -t auto_co2 .`
 
@@ -87,7 +150,7 @@ This will open a terminal window inside the container where you can execute comm
 - Open a terminal session in the repository root
 - Type `docker-compose run repo`
 - The app starts in a container in interactive mode
-- Exit the app and type `docker-compose down``
+- Exit the app and type `docker-compose down`
 
 
 ### **B. Run the app with a dedicated conda environment**
@@ -106,15 +169,15 @@ Here's the main menu:
 
 ![Alt text](readme/image.png)
 
-- Press 2 + ENTER to download the dataset from the github's repo page
+- Press [2] + [ENTER] to download the dataset from the github's repo page
 
-- Press 3 + ENTER to run preprocessing. You'll be prompted for options: select countries, etc.  
+- Press [3] + [ENTER]  to run preprocessing. You'll be prompted for options: select countries, etc.  
 
 ![Alt text](<readme/Screenshot from 2024-01-25 17-07-27.png>)  
 ![Alt text](<readme/Screenshot from 2024-01-25 17-08-06.png>)
 ![Alt text](<readme/Screenshot from 2024-01-25 17-08-20.png>)  
 
-- Press 4 + ENTER to run classification or press 5 + ENTER to run regression. You'll be prompted for hyperparameter selection, etc.
+- Press [4] + [ENTER]  to run classification or press [5] + [ENTER]  to run regression. You'll be prompted for hyperparameter selection, etc.
 
 ![Alt text](<readme/Screenshot from 2024-01-25 16-57-56.png>)
 
@@ -123,17 +186,24 @@ Here's the main menu:
 
 - You are given the choice to save the model and write the results in the database (/database/experiments.db)
 
-- Press 8 + ENTER to run SQL queries and explore the experimentation results:  
+- Press [8] + [ENTER]  to run SQL queries and explore the experimentation results:  
 
 ![Alt text](<readme/Screenshot from 2024-01-25 17-00-41.png>)  
 
+    - Tables:
+        - **experiments**: General info about experimentations, 1 row per experiment
+        - **model_hyperparameters**: Maps every model available with its modifiable parameters
+        - **xp_hyperparameters**: Hyperparameter values, 1 row per experiment
+        - **reg_results**: Evaluates the metrics specific to regression, 1 row per experiment
+        - **class_results**: Evaluates the metrics specific to multiclass classification (co2 Score), 4 rows per experiment
 
+- Exit app and container with [9] + [Enter] or [ctrl] + [c]
 
 ## **Guide to the auto_co2 python package**
 
 This package consists in 4 submodules:
 - **Data**: A set of tools created to load, preprocess and save content from the dataset
-- **Agg**: Aggregators to help analyze data, draw tables and plot figures on country level, manufacturer level,  car model level
+- **Agg**: Aggregators to analyze data, draw tables and plot figures on country level, manufacturer level, and car model level
 - **styles**: Tools to take advantage of pandas stylers and pretty print pandas objects
 - **viz**: Globally all plotting that we used but translated into Plotly Express / Plotly Graph Objects for esthetics and interactivity
 
