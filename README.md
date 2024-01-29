@@ -1,80 +1,3 @@
-# **car-co2-prediction**
-.
-├── app
-│   ├── class_preprocessing.py
-│   ├── models.py
-│   ├── __pycache__
-│   │   ├── models.cpython-311.pyc
-│   │   ├── models.cpython-39.pyc
-│   │   └── sqlite_db.cpython-39.pyc
-│   ├── reg_preprocessing.py
-│   └── sqlite_db.py
-├── build
-│   └── lib
-│       └── auto_co2
-│           ├── agg.py
-│           ├── data.py
-│           ├── styles.py
-│           └── viz.py
-├── data
-│   ├── processed
-│   │   ├── aggregated_datasets
-│   │   ├── classification
-│   │   └── regression
-│   ├── raw
-│   │   └── auto_co2_eur_21_raw.csv
-│   └── sample
-│       ├── co2_raw_sample.csv
-│       ├── co2_regression_20240112-151326.pkl
-│       └── co2_regression_sample.csv
-├── database
-│   ├── experiments.db
-│   └── query_logs.txt
-├── docker-compose.yml
-├── Dockerfile
-├── environment.yml
-├── launcher.py
-├── models
-├── notebooks
-│   ├── 1.1_viz_eur_2021.ipynb
-│   ├── 2.1_class_preprocessing_fr-de_2021.ipynb
-│   ├── ...
-│   └── ml_on_aggregated_data
-├── output
-│   ├── figures
-│   │   ├── classification_fr-de_2021
-│   │   │   ├── Courbes_ROC__Decision_Tree_20240114_013023.png
-│   │   │   └── ...
-│   │   ├── ml_on_aggregated_data
-│   │   │   └── ...
-│   │   ├── preprocessing_viz_eur_2021
-│   │   │   ├── Comparaison_de_la_masse_et_de_la_puissance_des_v_hicules__KW__20240126_120717.png
-│   │   │   └── ...
-│   │   └── regression_fr-de_2021
-│   │       ├── Courbe_KDE_de__20240126_120706.png
-│   │       └── ...
-│   ├── interpretability
-│   └── tables
-│       ├── ml_donnees_aggregees_eur
-│       ├── preprocess_viz_eur_2021
-│       └── tables_fr-all_2021
-├── readme
-│   ├── image-10.png
-│   └── ...
-├── README.md
-├── references
-├── requirements.txt
-├── setup.py
-├── src
-│   ├── auto_co2
-│   │   ├── agg.py
-│   │   ├── data.py
-│   │   ├── styles.py
-│   │   └── viz.py
-│   └── auto_co2.egg-info
-│       ├── dependency_links.txt
-│       └── PKG-INFO ...
-└── temp
 
 
 # **Car CO2 Emissions**
@@ -190,12 +113,15 @@ Here's the main menu:
 
 ![Alt text](<readme/Screenshot from 2024-01-25 17-00-41.png>)  
 
-    - Tables:
+Tables:
         - **experiments**: General info about experimentations, 1 row per experiment
         - **model_hyperparameters**: Maps every model available with its modifiable parameters
         - **xp_hyperparameters**: Hyperparameter values, 1 row per experiment
         - **reg_results**: Evaluates the metrics specific to regression, 1 row per experiment
         - **class_results**: Evaluates the metrics specific to multiclass classification (co2 Score), 4 rows per experiment
+
+![Alt text](readme/image00.png)  
+![Alt text](readme/image-111.png)
 
 - Exit app and container with [9] + [Enter] or [ctrl] + [c]
 

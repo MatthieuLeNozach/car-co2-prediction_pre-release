@@ -1,3 +1,4 @@
+# **car-co2-prediction**
 .
 ├── app
 │   ├── class_preprocessing.py
@@ -9,12 +10,10 @@
 │   ├── reg_preprocessing.py
 │   └── sqlite_db.py
 ├── build
-│   ├── bdist.linux-x86_64
 │   └── lib
 │       └── auto_co2
 │           ├── agg.py
 │           ├── data.py
-│           ├── __init__.py
 │           ├── styles.py
 │           └── viz.py
 ├── data
@@ -33,30 +32,14 @@
 │   └── query_logs.txt
 ├── docker-compose.yml
 ├── Dockerfile
-├── environment_from_history.yml
 ├── environment.yml
 ├── launcher.py
 ├── models
 ├── notebooks
 │   ├── 1.1_viz_eur_2021.ipynb
 │   ├── 2.1_class_preprocessing_fr-de_2021.ipynb
-│   ├── 2.2_classification_fr-de-2021.ipynb
-│   ├── 2.3_dl_classification copy.ipynb
-│   ├── 3.1_reg_preprocessing_fr-de_2021.ipynb
-│   ├── 3.2_regression_fr-de_2021.ipynb
-│   ├── 4.1_ml_on_aggregated_data_preprocessing.ipynb
-│   ├── 4.2_ml_on_aggregated_data_reg.ipynb
-│   ├── ml_on_aggregated_data
-│   │   ├── reg_preprocessing_agg3.ipynb
-│   │   ├── reg_preprocessing_agg.ipynb
-│   │   ├── test_agg_class.ipynb
-│   │   ├── test_agg_reg2.ipynb
-│   │   └── test_agg_reg3.ipynb
-│   ├── t.1.1_test_viz.ipynb
-│   ├── t.2.1_test_class_preprocessing.ipynb
-│   ├── t.2.2_test_classification.ipynb
-│   ├── t.3.1_test_reg_preprocessing.ipynb
-│   └── t.3.2_test_regression.ipynb
+│   ├── ...
+│   └── ml_on_aggregated_data
 ├── output
 │   ├── figures
 │   │   ├── classification_fr-de_2021
@@ -71,7 +54,6 @@
 │   │       ├── Courbe_KDE_de__20240126_120706.png
 │   │       └── ...
 │   ├── interpretability
-│   │   └── regression_fr-de_2021
 │   └── tables
 │       ├── ml_donnees_aggregees_eur
 │       ├── preprocess_viz_eur_2021
@@ -87,16 +69,9 @@
 │   ├── auto_co2
 │   │   ├── agg.py
 │   │   ├── data.py
-│   │   ├── __init__.py
-│   │   ├── __pycache__
 │   │   ├── styles.py
 │   │   └── viz.py
 │   └── auto_co2.egg-info
 │       ├── dependency_links.txt
-│       ├── PKG-INFO
-│       ├── SOURCES.txt
-│       └── top_level.txt
+│       └── PKG-INFO ...
 └── temp
-
-
-

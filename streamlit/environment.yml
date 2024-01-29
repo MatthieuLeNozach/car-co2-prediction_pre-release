@@ -1,0 +1,23 @@
+name: co2
+channels:
+  - defaults
+dependencies:
+  - dask
+  - dask-ml
+  - graphviz
+  - jupyterlab
+  - lime
+  - pandas
+  - plotly
+  - python-graphviz
+  - python=3.9
+  - scikit-learn
+  - seaborn
+  - selenium
+  - shap
+  - streamlit
+  - tensorflow
+  - unidecode
+  - xgboost
+  - pango
+prefix: C:\Users\ludov\.conda\envs\co2

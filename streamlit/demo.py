@@ -5,6 +5,18 @@ import joblib
 import xgboost as xgb
 
 
+
+# Choix d'un véhicule dans la base de donnée, (propositions a partir de criteres fixés, ou véhicule "le plus proche") 
+# --> Prédiction / vrai valeur
+# Peut on implementer un predictif partiel, a partir de quelques (ou une) caractéristiques. --> Donne le Co2 ou son intervalle ou la proba de classe (plutot stat alors)
+# Montrer les quelques graphiques réalisés (quelle interactivité ? plutot base de donnée d'images)
+
+
+
+
+
+
+
 # Page "Demo"
 def app(df) : 
 

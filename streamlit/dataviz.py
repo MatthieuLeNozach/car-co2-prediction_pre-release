@@ -219,7 +219,28 @@ def app(df) :
                 width = 2000,
                 use_column_width= True,
                 output_format = "PNG")
-        # Distributions des variables Quantitatives   
+
+    st.write("""
+            ### Distribution des voitures polluantes
+            """)
+    
+    img = "./data/images/co2_distr.png"
+    st.image(img,
+            width = 2000,
+            use_column_width= True,
+            output_format = "PNG")
+
+    
+    st.write("""
+            ### Distribution des voitures polluantes par type d'energie
+            """)
+    
+    img = "./data/images/co2_distr_fueltype.png"
+    st.image(img,
+            width = 2000,
+            use_column_width= True,
+            output_format = "PNG")
+
 
 
         

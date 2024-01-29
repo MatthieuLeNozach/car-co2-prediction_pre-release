@@ -20,8 +20,8 @@ import exemple
 import accueil
 
 # Voir si c'est a mettre dans les pages ou la.
-# st.set_page_config(layout="wide")   # pb eventuel 
-# st.set_option('deprecation.showPyplotGlobalUse', False)
+st.set_page_config(layout="wide")   # pb eventuel 
+st.set_option('deprecation.showPyplotGlobalUse', False)
 
 #----------------------------------------------Chargement des données
 
@@ -60,7 +60,7 @@ PAGES = {
     "Acceuil": accueil,
     "Présentation": intro,
     "Exploration des données": dataviz,
-    "Modélisation": model,
+    "Modèles de Machine Learning": model,
     "Démonstration": demo,
     "Conclusion et perspectives": conclusion,
     "Exemples et idees streamlit": exemple

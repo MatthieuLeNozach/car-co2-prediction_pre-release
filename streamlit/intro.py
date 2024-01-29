@@ -24,7 +24,6 @@ def app(df) :
     # st.write(<center> "https://thinkr.fr/wp-content/uploads/my_image.PNG" </center>)
    
 
- 
 
     st.write("""
         ### Données source:  

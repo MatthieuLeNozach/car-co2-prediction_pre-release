@@ -56,8 +56,7 @@ def app(df) :
     # Affichage optionnel   
     if st.checkbox('Voir des données sources (40 valeurs)'):     # chekbox optionel
         st.dataframe(df.sample(40))
-    if st.checkbox('Voir le résumé'):     # chekbox optionel
-        st.dataframe(df.describe())
+
 
     st.write("###### Queqlues chiffres")
     if st.checkbox("Afficher les NA") :
