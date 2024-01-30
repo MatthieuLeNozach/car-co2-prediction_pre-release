@@ -142,7 +142,7 @@ Some functionalities:
 Instance of the country aggregator object
 ![Alt text](<readme/Screenshot from 2024-01-25 16-29-22.png>)
 ![Alt text](<readme/Screenshot from 2024-01-25 16-35-21.png>)
-
+![Alt text](<readme/Screenshot from 2024-01-30 10-24-22.png>)
 
 Instance of the manufacturer aggregator object, and sorted display:  
 ![Alt text](<readme/Screenshot from 2024-01-25 16-29-58.png>)

@@ -165,22 +165,221 @@ def app(df) :
         
     ####################################### CLASSIFICATION ##############################
         
+        
         with tab2:
+            st.write("# Un problème de classification")  
+            col1, col2 = st.columns([0.75, 0.25])
+            with col1:
+                st.write("""
+                    La classification consiste à prédire l'apparteance d'un véhicule à l'un des 7 scores CO2.
+                    Les valeurs continues des émissions de CO2 sont donc discrétisées en 7 classes. 
+                    """)
+            with col2:
+                img_name = "co2score.png"
+                st.image(images_path + img_name, width=200)
+                
+            st.write("## Modèles de classification par arbre(s) de décision")  
+         
+            col1, col2 = st.columns([0.65, 0.35])
+            with col1:
+                st.write("### 1. Le Decision Decision Tree Classifier")  
+                st.write("""
+                         C'est l'un des classificateurs les plus simples et faciles à expliquer à un public non initié.
+                         Il consiste à diviser le jeu de données en sous-ensembles de plus en plus homogènes selon une valeur de séparation.
+                         Ils ne nécessitent pas de transformation de type normalisation ou standardisation des données.
+                         """)
+                dtc_param = st.expander("Recherche des meilleurs parametres" , expanded=False)
+                with dtc_param:
+                    st.write("""
+                        ###### Hyperparamètres du Decision Tree Classifier:                   
+                        - **criterion** : Critère de qualité de la séparation. On utilise l'indice de Gini.   
+                        - **max_depth** :  Le nombre maximal de séparations à effectuer. 
+                        Un grand nombre de séparations peut conduire à du sur-apprentissage. 
+                        Nous avons observé des performance optimales pour une profondeur de 20.
+                            """)
+            with col2:
+                img_name = "tree.png"
+                st.image(images_path + img_name, use_column_width= True )
 
-            st.write("""
-                # Un problème de Classification 
-                ---
-                 Particularités :
-                 Modèles explorés :
-                 - feature importance
-                 - shap_values
-                 - arbre de décission
+                    
+            
+            col1, col2 = st.columns([0.6, 0.4])
+            with col1:
+                st.write("### 2. Le Random Forest Classifier")  
+                st.write("""
+                         C'est un modèle basé sur un ensemble d'arbres de décision de dimension réduite.
+                         Chacun des estimateurs opère sur un nombre réduit de features et vote pour l'appartenance à une classe.
+                         La classe ayant eu la majorité des votes sur une ligne à prédire devient la prédiction.
+                         Les Random Forest sont des modèles performants et réputés bien plus robustes qu'un arbre de décision classique.
+                         """)
+                dtc_param = st.expander("Recherche des meilleurs parametres" , expanded=False)
+                with dtc_param:
+                    st.write("""
+                        ###### Hyperparamètres du Random Forest Classifier:                   
+                        - **n_estimators** : Le nombre d'arbres (estimateurs) créés. Un nombre trop élevé d'estimateurs peut aussi conduire à du sur-apprentissage.   
+                        Un grand nombre de séparations peut conduire à du sur-apprentissage. 
+                        Nous avons opté pour 200 estimateurs. 
+                        - **max_features**: Le nombre de features à utiliser pour chaque estimateur. la valeur 'sqrt' sera utilisée, il s'agit de limiter le nombre de features à la racine carrée du nombre total de features. 
 
-                 """)
+                            """)
+            with col2:
+                img_name = "Screenshot from 2024-01-29 19-39-02.png"
+                st.image(images_path + img_name, use_column_width= True )
+                
+            col1, col2 = st.columns([0.6, 0.4])
+            with col1:
+                st.write("### 2. Le XGBoost Classifier")  
+                st.write("""
+                         C'est l'adaptation du modèle présenté précedemment pour les problèmes de classification.
+                         Il a une approche similaire au Random Forest, mais les estimateurs sont ajustés aux erreurs de l'estimateur précédent plutôt que soumis à un vote.
+                         """)
+                dtc_param = st.expander("Recherche des meilleurs parametres" , expanded=False)
+                with dtc_param:
+                    st.write("""
+                        ###### Hyperparamètres du XGBoost Classifier:                   
+                        - **objective** : On utilisera *multi:softmax* pour répondre au prblème de classification multiclasse. La fonction softmax est utilisée pour calculer les probabilités d'appartenance à chaque classe, et la classe ayant la probabilité la plus élevée est choisie.
+                        - **n_estimators**: Dans le cas du xgboost, il s'agit du nombre d'epochs, ou nombre d'estimateurs faibles à qui l'on donne toutes les données d'entraînement. 
+                            """)
+            with col2:
+                img_name = "Screenshot from 2024-01-29 22-15-39.png"
+                st.image(images_path + img_name, width=300)
+            
+            st.write("## Analyse des résultats")  
+            st.write(""" """)
+            col1, col2, col3 = st.columns([0.34, 0.33, 0.33])
+
+
+            col1, col2, col3 = st.columns([0.34, 0.33, 0.33])
+
+            with col1:
+                
+                #st.markdown("<br>"*2, unsafe_allow_html=True)  # Add empty space before the image
+                img_name = "Screenshot from 2024-01-29 20-21-10.png"
+                st.image(images_path + img_name, use_column_width=True)
+                img_name = "Screenshot from 2024-01-29 20-18-07.png"
+                st.image(images_path + img_name, use_column_width=True)
+
+                
+            with col2:
+                img_name = "Screenshot from 2024-01-29 20-25-42.png"
+                st.image(images_path + img_name, use_column_width=True)
+                img_name = "Screenshot from 2024-01-29 20-06-20.png"     
+                st.image(images_path + img_name, use_column_width= True )
+                
+            with col3:
+                img_name = "Screenshot from 2024-01-29 21-06-46.png"
+                st.image(images_path + img_name, use_column_width=True)
+                img_name = "Screenshot from 2024-01-29 21-09-19.png"     
+                st.image(images_path + img_name, use_column_width= True )
+
+            st.write("")  
+            
+
+
+            st.write("""   
+                **On obtient d'excellents scores**:   
+                Dans les 3 cas, les modèles par arbre logique donnent des résultats similaires.  
+                Quasiment toutes les erreurs de classes se trouvent sur une classe adjacente. 
+                On observe légèrement plus d'erreurs sur la classe D.
+                La classe a est quasiment parfaitement prédite, possiblement dû la facilité qu'ont modèles à augmenter la pureté après avoir séparé véhicules hybrides et électriques. 
+
+                    """)
+
+
+            st.write("## Analyse des feature importances") 
+            st.write("")
+
+
+
+
+            col1, col2, col3 = st.columns([0.26, 0.35, 0.39], gap = 'small')
+            with col1:
+                st.write("**Decision Tree: premier split**")
+                st.markdown("<br>"*3, unsafe_allow_html=True)  # Add empty space before the image
+                img_name="Screenshot from 2024-01-29 20-00-17.png" 
+                col1.image(images_path + img_name, use_column_width= True )
+            with col2:
+                st.write("**Random Forest: feature importance**")
+                st.markdown("<br>"*2, unsafe_allow_html=True)  # Add empty space before the image
+                img_name="Screenshot from 2024-01-30 10-56-36.png"
+                col2.image(images_path + img_name, use_column_width= True )
+            with col3:
+                st.write("**XGBoost: feature importance**")
+                img_name="Screenshot from 2024-01-30 11-10-02.png" 
+                col3.image(images_path + img_name, use_column_width= True ) 
+
+
+
+
+            st.write("")
+            
+            st.write("""   
+                    ## Bilan modèles de machine learning pour la classification:
+                    - Excellents scores pour les 3 modèles, mais XGBoost et RFC promettent plus de robustesse
+                    """)
+                         
+
 
        
     ####################################### DEEP LEARNING ###############################
         
+        with tab3:
+            
+            st.write("## Classification par Deep Learning (Réseau de neurones)")  
+         
+            col1, col2 = st.columns([0.65, 0.35])
+            with col1:
+                st.write("### Présentation du DNN ou Deep Neural Network")  
+                st.write("""
+                            Présentation rapide DNN de classification BLABLABLA
+                         """)
+                dtc_param = st.expander("Recherche des meilleurs parametres" , expanded=False)
+                with dtc_param:
+                    st.write("""
+                        ###### Paramétrage d'un réseau de neurones:                   
+                        - **Couche d'entrée:** BLABLA
+                        - **Couches cachées:** BLABLABLA   
+                        - **Neurones par couche** :  BLABLA
+                        - **Régularisation ADAM** :  BLABLA 
+                        - **Fonctions d'activation** :  ReLU BLABLA , Softmax BLABLA
+                            """)
+            with col2:
+                img_name = "Dense-Neural-Network.png"
+                st.image(images_path + img_name, use_column_width= True )
+
+            
+        
+            col1, col2, col3 = st.columns([0.333, 0.333, 0.333], gap = 'small')
+            with col1:
+                
+                #st.markdown("<br>"*2, unsafe_allow_html=True)  # Add empty space before the image
+                st.write("**Architecture simple**")
+                st.write("Validation Accuracy = 0.9231")
+                img_name = "Screenshot from 2024-01-30 11-22-55.png"
+                st.image(images_path + img_name, use_column_width=True)
+
+                
+            with col2:
+                st.write("**Architecture profonde**")
+                st.write("Validation Accuracy: 0.881")
+                img_name = "Screenshot from 2024-01-30 11-24-52.png"
+                st.image(images_path + img_name, use_column_width=True)
+                
+            with col3:
+                st.write("**Architecture large**")
+                st.write("Validation Accuracy = 0.9235")
+                img_name = "Screenshot from 2024-01-30 11-27-17.png"
+                st.image(images_path + img_name, use_column_width=True)
+
+            
+            st.write("### Interpétation des résultats")  
+
+            st.write("""Modèles pas plus performlants que le ML mais coût computationnel plus élevé
+                     BLABLABLABLA
+                     """)
+            st.write("")  
+
+
     ####################################### INTERPRETABILITE #############################
                  
     with tab4:
