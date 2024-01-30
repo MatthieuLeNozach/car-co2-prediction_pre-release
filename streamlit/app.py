@@ -1,4 +1,3 @@
-# Le streamlit devra etre suport de présentation ? Voir idées des autres
 
 import streamlit as st
 import pandas as pd
@@ -16,12 +15,13 @@ import dataviz
 import model
 import demo
 import conclusion
-import exemple
 import accueil
+
 
 # Voir si c'est a mettre dans les pages ou la.
 st.set_page_config(layout="wide")   # pb eventuel 
 st.set_option('deprecation.showPyplotGlobalUse', False)
+
 
 #----------------------------------------------Chargement des données
 
@@ -55,37 +55,40 @@ df_no_dum = st.session_state.df_no_dum
 
 #------------------------------------------------SOMMAIRE 
 
-st.sidebar.title("Emissions de CO2 des vehicules")
+
+
+st.sidebar.image("./data/images/pollution3.png", width=250, use_column_width="auto" )
+
+st.sidebar.write("# Emissions CO2 des vehicules")
+
 PAGES = { 
     "Acceuil": accueil,
     "Présentation": intro,
-    "Exploration des données": dataviz,
-    "Modèles de Machine Learning": model,
+    "Exploration": dataviz,
+    "Modèles ML": model,
     "Démonstration": demo,
-    "Conclusion et perspectives": conclusion,
-    "Exemples et idees streamlit": exemple
+    "Conclusion, perspectives": conclusion
     }
 
 selection = st.sidebar.radio("Menu", list(PAGES.keys()))
 page = PAGES[selection]
 page.app(df)
 
-st.sidebar.image(
-        "./data/images/pollution3.png",
-        width=250,
-    )
+
 
 ## Affichage des auteurs et mentor en bas de la sidebar:
 st.sidebar.write(' ')
 st.sidebar.write(' ')
 st.sidebar.write(' ')
-st.sidebar.write(' ')
-st.sidebar.write('### Auteurs:')
-st.sidebar.write('Ludovic Calmettes')
-st.sidebar.write('Ludovic Calmettes')
-st.sidebar.write('Ludovic Calmettes')
-st.sidebar.write('Ludovic Calmettes')
-st.sidebar.write(' ')
-st.sidebar.write('### Mentor:')
-st.sidebar.write('Khalil')
+st.sidebar.write("""
+                 **Auteurs :**  
+                CALMETTES Ludovic  
+                LE NOZACH Matthieu  
+                KAPNANG Pierre olivier  
+                NOUYETOWA-TOLOFON  Hippolyte                 
+                 """)
 
+st.sidebar.write("""
+                 **Mentor:**  
+                OUERTANI Khalil
+                 """)

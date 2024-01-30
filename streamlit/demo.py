@@ -4,18 +4,10 @@ import pickle
 import joblib
 import xgboost as xgb
 
-
-
 # Choix d'un véhicule dans la base de donnée, (propositions a partir de criteres fixés, ou véhicule "le plus proche") 
 # --> Prédiction / vrai valeur
 # Peut on implementer un predictif partiel, a partir de quelques (ou une) caractéristiques. --> Donne le Co2 ou son intervalle ou la proba de classe (plutot stat alors)
 # Montrer les quelques graphiques réalisés (quelle interactivité ? plutot base de donnée d'images)
-
-
-
-
-
-
 
 # Page "Demo"
 def app(df) : 
@@ -97,13 +89,11 @@ def app(df) :
         FuelType = st.selectbox('Fuel type',
                     ['PETROL',
                         'DIESEL',
-                        'ELECTRIC',
                         'PETROL/ELECTRIC',
                         'DIESEL/ELECTRIC',
                         'LPG',
                         'ETHANOL',
-                        'NATURALGAS',
-                        'HYDROGEN'              
+                        'NATURALGAS',        
                         ],index = 0 )
     
 
@@ -165,13 +155,14 @@ def app(df) :
             
             # Catégorie decilles (fr-al 21: 10/25/50/75/90 = 0/62/124/142/167) 
             if ypred < 62 :
-                text = "Félicitations. Cette voiture devrait etre dans les 25% les moins polluantes. Seule les electriques sont dans les 10%" 
+                text = """Félicitations. Cette voiture devrait etre dans les 25% les moins polluantes.  
+                Seule les electriques sont dans les 10%""" 
             elif ypred < 124 :
-                text = "Pollution moyenne (2nd quartille)"
+                text = "Pollution moyenne (2nd quartile)"
             elif ypred < 142 :
-                text = "Pollution assez forte(3eme quartille)"
+                text = "Pollution assez forte(3eme quartile)"
             elif ypred < 167:
-                text = "Pollution forte(4eme quartille)"
+                text = "Pollution forte(4eme quartile)"
             else :
                 text = "Felicitation. Cette voiture devrait etre dans les 10% les plus polluantes. On peut pas faire mieux !!"
 

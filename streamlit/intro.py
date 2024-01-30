@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from PIL import Image   # Utile ?
 
 
 # --------------------------------Page "Introduction"
@@ -30,23 +31,19 @@ def app(df) :
         Source du jeu de données: [European Environment Agency](https://www.eea.europa.eu/en/datahub/datahubitem-view/fa8b1229-3db6-495d-b18e-9c9b3267c02b)  
         C'est une structure de l'Union Europeenne qui enregistre toutes les nouvelles immatriculations de voitures en europe.  
              
-        La taille du ce jeu de données est très importante, avec par exemple 19 millions de véhicules pour la seule année 2021.   
-             
-        - Choix de travailler sur un échantillon de l'ordre de 5 à 10 millions de valeurs pour garder un temps de traitement raisonnable.  
-        - Le Dataset utilisé est donc : France & Allemagne 2021  
-        - Il comporte **8 518 000 enregistrements sur 38 variables**.   
-             
-   
-
-        
+        La taille du ce jeu de données est très importante: 9 millions de véhicules pour la seule année 2021.  
+        - Dataset d'exploration et analyse des données: Europe 2021        
+        Entrainement des modèles sur un échatillon réduit, pour garder un temps de traitement raisonnable.  
+        - Dataset d'entrainement des modèles: France & Allemagne 2021  
+        - Il comporte **4 500 000 enregistrements sur 38 variables**.   
+    
         ### Méthodologie
         1. Collecte et nettoyage des données  
         2. Analyse exploratoire  
         3. **Developpement de modèles prédictifs**  
-        4. Post-analyse
+        4. Analyse des résultats et modèles
         5. Prolongements
              """)
-
 
     st.write("""
                 ### Regression ou Classification ?
@@ -54,7 +51,7 @@ def app(df) :
                 C'est un problème de regression, mais pour des raisons pédagogiques, nous avons souhaité explorer deux approches :               
 
                  """)
-    col1, col2 = st.columns([0.7,0.3], gap = 'large')
+    col1, col2 = st.columns([0.7,0.3], gap = 'small')
     with col1:   
         st.write("""
                 - **Problème de Regression**: On cherche à prédire la valeur des émisssions de CO2. 
@@ -63,14 +60,7 @@ def app(df) :
                 """)
 
     with col2:
-            # from PIL import Image
-            # classes = Image.open("./data/images/classes.png")
-            # st.image(classes,
-            #   use_column_width = "auto")
-
             classes = "./data/images/classes.png"
-            st.image(classes,
-              width = 150,
-              output_format = "PNG")
+            st.image(classes, use_column_width = "auto", output_format = "PNG")
 
 
